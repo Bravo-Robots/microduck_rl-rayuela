@@ -1,0 +1,1184 @@
+<?xml version='1.0' encoding='utf-8'?>
+<mujoco model="microduck_track_6">
+  <compiler angle="radian" meshdir="assets/" />
+  <default>
+    <equality solref="0.002" solimp="0.99 0.999 0.0005" />
+    <default class="microduck">
+      <joint armature="0.005" frictionloss="0.1" />
+      <equality solref="0.02" solimp="0.9 0.95 0.001" />
+      <general biastype="affine" gainprm="50" biasprm="0 -50 1" />
+      <default class="visual">
+        <geom type="mesh" contype="0" conaffinity="0" group="2" />
+      </default>
+      <default class="collision">
+        <geom group="3" />
+      </default>
+    </default>
+    <default class="perfect_actuator">
+      <joint armature="0.001" damping="0.15" frictionloss="0.1" />
+      <geom contype="0" conaffinity="0" />
+      <equality solref="0.02" solimp="0.9 0.95 0.001" />
+      <general forcerange="-20 20" biastype="affine" gainprm="10" biasprm="0 -10 -0.1" />
+    </default>
+    <default class="chosen_actuator_old">
+      <joint armature="0.002" damping="0.048" frictionloss="0.006" />
+      <geom contype="0" conaffinity="0" />
+      <equality solref="0.02" solimp="0.9 0.95 0.001" />
+      <general ctrlrange="-10 10" forcerange="-0.91 0.91" biastype="affine" gainprm="0.52" biasprm="0 -0.52" />
+    </default>
+    <default class="chosen_actuator_new">
+      <joint armature="0.002" damping="0.041" frictionloss="0.032" />
+      <geom contype="0" conaffinity="0" />
+      <equality solref="0.02" solimp="0.9 0.95 0.001" />
+      <general ctrlrange="-10 10" forcerange="-0.67 0.67" biastype="affine" gainprm="0.386" biasprm="0 -0.386" />
+    </default>
+    <default class="chosen_actuator_antoine">
+      <joint armature="0.0017" damping="0.044" frictionloss="0.013" />
+      <geom contype="0" conaffinity="0" />
+      <equality solref="0.02" solimp="0.9 0.95 0.001" />
+      <general ctrlrange="-10 10" forcerange="-0.75 0.75" biastype="affine" gainprm="0.43" biasprm="0 -0.43" />
+    </default>
+    <default class="chosen_actuator">
+      <joint armature="0.0018" damping="0.053" frictionloss="0.0048" />
+      <geom contype="0" conaffinity="0" />
+      <equality solref="0.02" solimp="0.9 0.95 0.001" />
+      <general ctrlrange="-10 10" forcerange="-0.96 0.96" biastype="affine" gainprm="0.55" biasprm="0 -0.55" />
+    </default>
+    <default class="passive_wheel">
+      <joint armature="0.0001" />
+      <geom contype="0" conaffinity="0" />
+      <equality solref="0.02" solimp="0.9 0.95 0.001" />
+    </default>
+    <default class="passive_joint">
+      <joint armature="0.0001" />
+      <geom contype="0" conaffinity="0" />
+      <equality solref="0.02" solimp="0.9 0.95 0.001" />
+    </default>
+    <default class="self_collision_only">
+      <geom contype="2" conaffinity="2" group="3" />
+    </default>
+  </default>
+  <asset>
+    <texture type="skybox" colorspace="auto" builtin="gradient" rgb1="0.3 0.5 0.7" rgb2="0 0 0" width="512" height="3072" />
+    <texture type="2d" colorspace="auto" name="groundplane" builtin="checker" mark="edge" rgb1="0.2 0.3 0.4" rgb2="0.1 0.2 0.3" markrgb="0.8 0.8 0.8" width="300" height="300" />
+    <material name="seeed_bearing__configuration__22x16x4_material" rgba="0.811765 0.858824 0.898039 1" />
+    <material name="right_shell_material" rgba="0.85098 0.85098 0.839216 1" />
+    <material name="banana_pcb_locker_material" rgba="0.647059 0.647059 0.647059 1" />
+    <material name="trunk_base_material" rgba="0.129412 0.152941 0.129412 1" />
+    <material name="xl330_material" rgba="0.286275 0.286275 0.286275 1" />
+    <material name="power_support_material" rgba="0.67451 0.639216 0.603922 1" />
+    <material name="np_f970_material" rgba="0.301961 0.301961 0.301961 1" />
+    <material name="left_shell_material" rgba="0.8 0.8 0.8 1" />
+    <material name="yaw2roll_material" rgba="0.129412 0.152941 0.129412 1" />
+    <material name="bearing_roll_material" rgba="0.129412 0.152941 0.129412 1" />
+    <material name="hip_l_material" rgba="0.67451 0.639216 0.603922 1" />
+    <material name="upper_leg_left_material" rgba="0.85098 0.85098 0.839216 1" />
+    <material name="upper_leg_rigidity_plate_material" rgba="0.67451 0.639216 0.603922 1" />
+    <material name="leg_material" rgba="0.67451 0.639216 0.603922 1" />
+    <material name="sole_left_material" rgba="0.956863 0.686275 0.137255 1" />
+    <material name="foot_left_material" rgba="1 0.403922 0.121569 1" />
+    <material name="seeed_bearing__configuration_default_material" rgba="0.811765 0.858824 0.898039 1" />
+    <material name="ankle_left_material" rgba="1 0.403922 0.121569 1" />
+    <material name="neck_material" rgba="0.67451 0.639216 0.603922 1" />
+    <material name="neck_pitch_material" rgba="0.34902 0.376471 0.4 1" />
+    <material name="yaw_roll_motion_material" rgba="0.129412 0.152941 0.129412 1" />
+    <material name="lens_material" rgba="0.262745 0.282353 0.301961 1" />
+    <material name="face_part_material" rgba="0.67451 0.639216 0.603922 1" />
+    <material name="jaw_soft_material" rgba="0.85098 0.756863 0.866667 1" />
+    <material name="motor_support_material" rgba="0.129412 0.152941 0.129412 1" />
+    <material name="top_head_shell_material" rgba="0.85098 0.85098 0.839216 1" />
+    <material name="elec_rpi_robot_hat_pcb_material" rgba="0.313725 0.486275 0.411765 1" />
+    <material name="soft_mouth_top_material" rgba="0.85098 0.756863 0.866667 1" />
+    <material name="noenoeil_material" rgba="0.956863 0.686275 0.137255 1" />
+    <material name="jaw_material" rgba="1 0.403922 0.121569 1" />
+    <material name="bottom_head_shell_material" rgba="1 0.403922 0.121569 1" />
+    <material name="m12_lens_holder_material" rgba="0.262745 0.282353 0.301961 1" />
+    <material name="pcb__raspberry_pi_zero_2_w_material" rgba="0.498039 0.498039 0.498039 1" />
+    <material name="speaker_material" rgba="0.294118 0.290196 0.290196 1" />
+    <material name="upper_leg_right_material" rgba="0.85098 0.85098 0.839216 1" />
+    <material name="ankle_right_material" rgba="1 0.403922 0.121569 1" />
+    <material name="sole_right_material" rgba="0.956863 0.686275 0.137255 1" />
+    <material name="foot_right_material" rgba="1 0.403922 0.121569 1" />
+    <material name="groundplane" texture="groundplane" texuniform="true" texrepeat="5 5" reflectance="0.2" />
+    <mesh name="leg" content_type="model/stl" file="leg.stl" />
+    <mesh name="yaw_roll_motion" content_type="model/stl" file="yaw_roll_motion.stl" />
+    <mesh name="face_part" content_type="model/stl" file="face_part.stl" />
+    <mesh name="upper_leg_rigidity_plate" content_type="model/stl" file="upper_leg_rigidity_plate.stl" />
+    <mesh name="soft_mouth_top" content_type="model/stl" file="soft_mouth_top.stl" />
+    <mesh name="right_shell" content_type="model/stl" file="right_shell.stl" />
+    <mesh name="jaw_soft" content_type="model/stl" file="jaw_soft.stl" />
+    <mesh name="neck" content_type="model/stl" file="neck.stl" />
+    <mesh name="foot_right" content_type="model/stl" file="foot_right.stl" />
+    <mesh name="ankle_left" content_type="model/stl" file="ankle_left.stl" />
+    <mesh name="trunk_base" content_type="model/stl" file="trunk_base.stl" />
+    <mesh name="bearing_roll" content_type="model/stl" file="bearing_roll.stl" />
+    <mesh name="upper_leg_left" content_type="model/stl" file="upper_leg_left.stl" />
+    <mesh name="neck_pitch" content_type="model/stl" file="neck_pitch.stl" />
+    <mesh name="noenoeil" content_type="model/stl" file="noenoeil.stl" />
+    <mesh name="top_head_shell" content_type="model/stl" file="top_head_shell.stl" />
+    <mesh name="pcb__raspberry_pi_zero_2_w" content_type="model/stl" file="pcb__raspberry_pi_zero_2_w.stl" />
+    <mesh name="seeed_bearing__configuration__22x16x4" content_type="model/stl" file="seeed_bearing__configuration__22x16x4.stl" />
+    <mesh name="yaw2roll" content_type="model/stl" file="yaw2roll.stl" />
+    <mesh name="m12_lens_holder" content_type="model/stl" file="m12_lens_holder.stl" />
+    <mesh name="speaker" content_type="model/stl" file="speaker.stl" />
+    <mesh name="bottom_head_shell" content_type="model/stl" file="bottom_head_shell.stl" />
+    <mesh name="hip_l" content_type="model/stl" file="hip_l.stl" />
+    <mesh name="elec_rpi_robot_hat_pcb" content_type="model/stl" file="elec_rpi_robot_hat_pcb.stl" />
+    <mesh name="xl330" content_type="model/stl" file="xl330.stl" />
+    <mesh name="lens" content_type="model/stl" file="lens.stl" />
+    <mesh name="seeed_bearing__configuration_default" content_type="model/stl" file="seeed_bearing__configuration_default.stl" />
+    <mesh name="ankle_right" content_type="model/stl" file="ankle_right.stl" />
+    <mesh name="jaw" content_type="model/stl" file="jaw.stl" />
+    <mesh name="np_f970" content_type="model/stl" file="np_f970.stl" />
+    <mesh name="banana_pcb_locker" content_type="model/stl" file="banana_pcb_locker.stl" />
+    <mesh name="upper_leg_right" content_type="model/stl" file="upper_leg_right.stl" />
+    <mesh name="left_shell" content_type="model/stl" file="left_shell.stl" />
+    <mesh name="foot_left" content_type="model/stl" file="foot_left.stl" />
+    <mesh name="sole_left" content_type="model/stl" file="sole_left.stl" />
+    <mesh name="sole_right" content_type="model/stl" file="sole_right.stl" />
+    <mesh name="power_support" content_type="model/stl" file="power_support.stl" />
+    <mesh name="motor_support" content_type="model/stl" file="motor_support.stl" />
+  </asset>
+  <worldbody>
+    <light directional="true" diffuse="0.9 0.9 0.9" pos="0 0 5" dir="0 0 -1" />
+    <geom name="floor" type="plane" size="0 0 0.05" rgba="0.72 0.33 0.24 1" />
+    <geom type="box" size="1.2500 0.0150 0.001" pos="1.2500 -1.5000 0.001" rgba="1 1 1 1" contype="0" conaffinity="0" />
+    <geom type="box" size="1.2500 0.0150 0.001" pos="1.2500 -1.0000 0.001" rgba="1 1 1 1" contype="0" conaffinity="0" />
+    <geom type="box" size="1.2500 0.0150 0.001" pos="1.2500 -0.5000 0.001" rgba="1 1 1 1" contype="0" conaffinity="0" />
+    <geom type="box" size="1.2500 0.0150 0.001" pos="1.2500 0.0000 0.001" rgba="1 1 1 1" contype="0" conaffinity="0" />
+    <geom type="box" size="1.2500 0.0150 0.001" pos="1.2500 0.5000 0.001" rgba="1 1 1 1" contype="0" conaffinity="0" />
+    <geom type="box" size="1.2500 0.0150 0.001" pos="1.2500 1.0000 0.001" rgba="1 1 1 1" contype="0" conaffinity="0" />
+    <geom type="box" size="1.2500 0.0150 0.001" pos="1.2500 1.5000 0.001" rgba="1 1 1 1" contype="0" conaffinity="0" />
+    <geom type="box" size="0.0200 1.5000 0.001" pos="0.0 0 0.001" rgba="1 1 1 1" contype="0" conaffinity="0" />
+    <geom type="box" size="0.0200 0.1250 0.001" pos="2.5 -1.3750 0.001" rgba="1 1 1 1" contype="0" conaffinity="0" />
+    <geom type="box" size="0.0200 0.1250 0.001" pos="2.5 -1.1250 0.001" rgba="0.05 0.05 0.05 1" contype="0" conaffinity="0" />
+    <geom type="box" size="0.0200 0.1250 0.001" pos="2.5 -0.8750 0.001" rgba="1 1 1 1" contype="0" conaffinity="0" />
+    <geom type="box" size="0.0200 0.1250 0.001" pos="2.5 -0.6250 0.001" rgba="0.05 0.05 0.05 1" contype="0" conaffinity="0" />
+    <geom type="box" size="0.0200 0.1250 0.001" pos="2.5 -0.3750 0.001" rgba="1 1 1 1" contype="0" conaffinity="0" />
+    <geom type="box" size="0.0200 0.1250 0.001" pos="2.5 -0.1250 0.001" rgba="0.05 0.05 0.05 1" contype="0" conaffinity="0" />
+    <geom type="box" size="0.0200 0.1250 0.001" pos="2.5 0.1250 0.001" rgba="1 1 1 1" contype="0" conaffinity="0" />
+    <geom type="box" size="0.0200 0.1250 0.001" pos="2.5 0.3750 0.001" rgba="0.05 0.05 0.05 1" contype="0" conaffinity="0" />
+    <geom type="box" size="0.0200 0.1250 0.001" pos="2.5 0.6250 0.001" rgba="1 1 1 1" contype="0" conaffinity="0" />
+    <geom type="box" size="0.0200 0.1250 0.001" pos="2.5 0.8750 0.001" rgba="0.05 0.05 0.05 1" contype="0" conaffinity="0" />
+    <geom type="box" size="0.0200 0.1250 0.001" pos="2.5 1.1250 0.001" rgba="1 1 1 1" contype="0" conaffinity="0" />
+    <geom type="box" size="0.0200 0.1250 0.001" pos="2.5 1.3750 0.001" rgba="0.05 0.05 0.05 1" contype="0" conaffinity="0" />
+    <body name="duck0_trunk_base" childclass="microduck" pos="0.0000 -1.2500 0.12">
+      <inertial pos="-0.0226332 -2.70828e-05 0.00280064" quat="0.664866 0.238381 0.235012 0.667756" mass="0.199224" diaginertia="0.000145932 0.000140799 9.85265e-05" />
+      <joint name="duck0_trunk_base_freejoint" type="free" armature="0" frictionloss="0" />
+      <geom class="visual" pos="0.006 0.0175 -0.005" quat="1 0 0 0" material="seeed_bearing__configuration__22x16x4_material" mesh="seeed_bearing__configuration__22x16x4" />
+      <geom class="visual" pos="0.004 -0.0005 -0.0175" quat="0.707107 0 0 0.707107" material="right_shell_material" mesh="right_shell" />
+      <geom class="visual" pos="0.0042 0 -0.0175215" quat="0.707107 0 0 0.707107" material="banana_pcb_locker_material" mesh="banana_pcb_locker" />
+      <geom class="visual" pos="0.004 0 -0.0175" quat="0.707107 0 0 0.707107" material="trunk_base_material" mesh="trunk_base" />
+      <geom class="visual" pos="0.006 0.0175 0.0115" quat="0 -0.707107 0 -0.707107" material="xl330_material" mesh="xl330" />
+      <geom class="visual" pos="0.004 0 -0.0175215" quat="0.707107 0 0 0.707107" material="power_support_material" mesh="power_support" />
+      <geom class="self_collision_only" pos="0.004 0 -0.0175215" quat="0.707107 0 0 0.707107" type="mesh" material="power_support_material" mesh="power_support" />
+      <geom class="visual" pos="-0.0359693 0 -0.00385049" quat="0.00617059 0.70708 -0.70708 -0.00617059" material="np_f970_material" mesh="np_f970" />
+      <geom class="collision" pos="-0.0359693 0 -0.00385049" quat="0.00617059 0.70708 -0.70708 -0.00617059" type="mesh" material="np_f970_material" mesh="np_f970" />
+      <geom class="visual" pos="0.006 -0.0175 0.0115" quat="0 -0.707107 0 -0.707107" material="xl330_material" mesh="xl330" />
+      <geom class="visual" pos="0.004 0 -0.0175785" quat="0.707107 0 0 0.707107" material="left_shell_material" mesh="left_shell" />
+      <geom class="visual" pos="0.006 -0.0175 -0.005" quat="1 0 0 0" material="seeed_bearing__configuration__22x16x4_material" mesh="seeed_bearing__configuration__22x16x4" />
+      <site name="duck0_imu" pos="-0.021 6.64098e-05 -0.0146984" group="3" />
+      <body name="duck0_yaw2roll" pos="0.006 0.0175 -0.005" quat="0 -0.707107 -0.707107 0">
+        <inertial pos="-8.8e-11 0.00099414 0.0168917" quat="0.99973 -0.0232487 0 0" mass="0.0230406" diaginertia="4.1964e-06 3.41989e-06 2.32413e-06" />
+        <joint name="duck0_left_hip_yaw" class="chosen_actuator" pos="0 0 0" axis="0 0 1" range="-0.436332 0.523599" />
+        <geom class="visual" pos="-0.0175 -0.002 0.0125" quat="0 1 0 0" material="yaw2roll_material" mesh="yaw2roll" />
+        <geom class="visual" pos="0 0 0.0125" quat="0 -0.707107 0.707107 0" material="xl330_material" mesh="xl330" />
+        <geom class="visual" pos="0 0.0165 0.0125" quat="0.5 0.5 0.5 -0.5" material="seeed_bearing__configuration__22x16x4_material" mesh="seeed_bearing__configuration__22x16x4" />
+        <geom class="visual" pos="-0.0175 -0.002 0.0125" quat="0 -1 0 0" material="bearing_roll_material" mesh="bearing_roll" />
+        <body name="duck0_hip_l" pos="0 0.0165 0.0125" quat="0.707107 -0.707107 0 0">
+          <inertial pos="0.014815 1.6179e-08 -0.00829992" quat="0.94694 -8.2459e-07 -0.321411 -2.79883e-07" mass="0.00618934" diaginertia="1.15976e-06 1.15753e-06 3.52458e-07" />
+          <joint name="duck0_left_hip_roll" class="chosen_actuator" pos="0 0 0" axis="0 0 1" range="-0.383972 0.383972" />
+          <geom class="visual" pos="0.021 0 -0.0185" quat="0.5 0.5 0.5 0.5" material="seeed_bearing__configuration__22x16x4_material" mesh="seeed_bearing__configuration__22x16x4" />
+          <geom class="visual" pos="-0.0175 0 -0.0185" quat="0.707107 -0.707107 0 0" material="hip_l_material" mesh="hip_l" />
+          <geom class="collision" pos="-0.0175 0 -0.0185" quat="0.707107 -0.707107 0 0" type="mesh" material="hip_l_material" mesh="hip_l" />
+          <body name="duck0_upper_leg_left" pos="0.025 0 -0.0185" quat="0.5 -0.5 0.5 -0.5">
+            <inertial pos="0.006766 0.0228838 0.0134531" quat="0.620818 0.374279 -0.583696 0.365786" mass="0.0482067" diaginertia="1.98453e-05 1.9108e-05 8.11799e-06" />
+            <joint name="duck0_left_hip_pitch" class="chosen_actuator" pos="0 0 0" axis="0 0 1" range="-1.5708 1.5708" />
+            <geom class="visual" pos="0 0 -0.0425" quat="0.5 -0.5 -0.5 -0.5" material="upper_leg_left_material" mesh="upper_leg_left" />
+            <geom class="visual" pos="0.022 0.0357771 0.0125" quat="0 0.707107 0 0.707107" material="xl330_material" mesh="xl330" />
+            <geom class="visual" pos="0 0 -0.0425" quat="0.5 -0.5 -0.5 -0.5" material="upper_leg_rigidity_plate_material" mesh="upper_leg_rigidity_plate" />
+            <geom class="visual" pos="0.022 0.0357771 -0.004" quat="0 0 0 1" material="seeed_bearing__configuration__22x16x4_material" mesh="seeed_bearing__configuration__22x16x4" />
+            <geom class="visual" pos="0 0 0.0125" quat="0.5 0.5 -0.5 0.5" material="xl330_material" mesh="xl330" />
+            <body name="duck0_leg" pos="0.022 0.0357771 -0.004" quat="0 0.707107 0.707107 0">
+              <inertial pos="-1.52e-10 0.0318937 -0.00953505" quat="0.806473 0.591271 0 0" mass="0.0215844" diaginertia="5.25056e-06 4.58054e-06 1.91378e-06" />
+              <joint name="duck0_left_knee" class="chosen_actuator" pos="0 0 0" axis="0 0 1" range="-1.5708 1.5708" />
+              <geom class="visual" pos="-0.022 0.0357771 0.0385" quat="0.5 0.5 0.5 -0.5" material="leg_material" mesh="leg" />
+              <geom class="collision" pos="-0.022 0.0357771 0.0385" quat="0.5 0.5 0.5 -0.5" type="mesh" material="leg_material" mesh="leg" />
+              <geom class="visual" pos="0 0.042 -0.0115" quat="0.5 -0.5 -0.5 -0.5" material="xl330_material" mesh="xl330" />
+              <body name="duck0_ankle_left" pos="0 0.042 -0.026" quat="0 -1 0 0">
+                <inertial pos="-0.00615742 -0.0137483 -0.0156585" quat="0.474723 0.505182 0.517427 0.501696" mass="0.0300246" diaginertia="1.11623e-05 7.7432e-06 5.90334e-06" />
+                <joint name="duck0_left_ankle" class="chosen_actuator" pos="0 0 0" axis="0 0 1" range="-1.5708 1.5708" />
+                <geom class="visual" pos="-0.022 0.00622291 -0.0647" quat="0.5 -0.5 -0.5 -0.5" material="sole_left_material" mesh="sole_left" />
+                <geom name="duck0_left_foot_collision" class="collision" pos="-0.022 0.00622291 -0.0647" quat="0.5 -0.5 -0.5 -0.5" type="mesh" material="sole_left_material" mesh="sole_left" />
+                <geom class="visual" pos="-0.022 0.00622291 -0.0647" quat="0.5 -0.5 -0.5 -0.5" material="foot_left_material" mesh="foot_left" />
+                <geom class="visual" pos="0 0 -0.0322" quat="0 0 0 1" material="seeed_bearing__configuration_default_material" mesh="seeed_bearing__configuration_default" />
+                <geom class="visual" pos="-0.022 0.00622291 -0.0647" quat="0.5 -0.5 -0.5 -0.5" material="ankle_left_material" mesh="ankle_left" />
+                <site name="duck0_left_foot" pos="0 -0.0238146 -0.0140852" quat="0 0 -0.707107 -0.707107" group="3" />
+              </body>
+            </body>
+          </body>
+        </body>
+      </body>
+      <body name="duck0_neck" pos="0.026 0.0145 0.0324215" quat="0 0 0.707107 -0.707107">
+        <inertial pos="0 -0.025 0.0141665" quat="0.707107 0.707107 0 0" mass="0.0368414" diaginertia="1.72925e-05 1.63707e-05 3.12694e-06" />
+        <joint name="duck0_neck_pitch" class="chosen_actuator" pos="0 0 0" axis="0 0 1" range="-1.5708 1.0472" />
+        <geom class="visual" pos="0.022 0.05 0.028" quat="0.5 0.5 0.5 -0.5" material="neck_material" mesh="neck" />
+        <geom class="visual" pos="0 0 0.0145" quat="0.5 -0.5 -0.5 -0.5" material="xl330_material" mesh="xl330" />
+        <geom class="visual" pos="0 -0.05 0.0145" quat="0.5 0.5 -0.5 0.5" material="xl330_material" mesh="xl330" />
+        <geom class="visual" pos="0.022 0.05 0.003" quat="0.5 0.5 0.5 -0.5" material="neck_material" mesh="neck" />
+        <body name="duck0_neck_pitch" pos="0 -0.05 0" quat="0 1 0 0">
+          <inertial pos="-6.533e-09 0.0116641 -0.0145" mass="0.00572" diaginertia="1.09186e-06 9.66855e-07 5.12111e-07" />
+          <joint name="duck0_head_pitch" class="chosen_actuator" pos="0 0 0" axis="0 0 1" range="-1.5708 1.5708" />
+          <geom class="visual" pos="0 0.0287931 -0.0145" quat="0.5 -0.5 -0.5 -0.5" material="neck_pitch_material" mesh="neck_pitch" />
+          <geom class="visual" pos="0 0.0207931 -0.0145" quat="0.707107 0.707107 0 0" material="seeed_bearing__configuration__22x16x4_material" mesh="seeed_bearing__configuration__22x16x4" />
+          <body name="duck0_yaw_roll_motion" pos="0 0.0186931 -0.0145" quat="0 0 -0.707107 -0.707107">
+            <inertial pos="-0.000166657 -0.00500964 0.0178065" quat="0.174483 0.690172 -0.0192577 0.702031" mass="0.0486" diaginertia="9.65512e-06 8.11788e-06 6.8878e-06" />
+            <joint name="duck0_head_yaw" class="chosen_actuator" pos="0 0 0" axis="0 0 1" range="-2.96706 2.96706" />
+            <geom class="visual" pos="0 0 0.01" quat="0.707107 0 0 0.707107" material="yaw_roll_motion_material" mesh="yaw_roll_motion" />
+            <geom class="visual" pos="0 0 0.0145" quat="0.5 -0.5 -0.5 -0.5" material="xl330_material" mesh="xl330" />
+            <geom class="visual" pos="-0.016 0 0.0145" quat="0.707107 0 -0.707107 0" material="seeed_bearing__configuration__22x16x4_material" mesh="seeed_bearing__configuration__22x16x4" />
+            <geom class="visual" pos="0.018 0 0.0145" quat="0.707107 0 -0.707107 0" material="seeed_bearing__configuration__22x16x4_material" mesh="seeed_bearing__configuration__22x16x4" />
+            <body name="duck0_jaw_soft" pos="-0.0179 0 0.0145" quat="0.707107 0 -0.707107 0">
+              <inertial pos="0.00460523 0.00120047 -0.0324761" quat="0.999608 0.0201488 -0.0191644 -0.00313932" mass="0.188766" diaginertia="0.000321067 0.000254266 0.000149461" />
+              <joint name="duck0_head_roll" class="chosen_actuator" pos="0 0 0" axis="0 0 1" range="-0.436332 0.436332" />
+              <geom class="visual" pos="0.0155 -9.13778e-05 -0.05548" quat="0.5 -0.5 0.5 -0.5" material="lens_material" mesh="lens" />
+              <geom class="visual" pos="-0.0045 -9.13778e-05 -0.0178" quat="0.5 0.5 0.5 0.5" material="face_part_material" mesh="face_part" />
+              <geom class="visual" pos="0.003 0.0255 -0.018" quat="0.707107 0 0 -0.707107" material="xl330_material" mesh="xl330" />
+              <geom class="visual" pos="-0.0046 0 -0.0179996" quat="0.5 0.5 0.5 0.5" material="jaw_soft_material" mesh="jaw_soft" />
+              <geom class="visual" pos="-0.0045 0 -0.018" quat="0.5 0.5 0.5 0.5" material="motor_support_material" mesh="motor_support" />
+              <geom class="visual" pos="-0.0045 0 -0.018" quat="0.5 0.5 0.5 0.5" material="top_head_shell_material" mesh="top_head_shell" />
+              <geom class="collision" pos="-0.0045 0 -0.018" quat="0.5 0.5 0.5 0.5" type="mesh" material="top_head_shell_material" mesh="top_head_shell" />
+              <geom class="visual" pos="0 0 0.0145" quat="0.5 -0.5 -0.5 -0.5" material="xl330_material" mesh="xl330" />
+              <geom class="visual" pos="0.0032 -0.04 -0.018" quat="0.5 -0.5 0.5 0.5" material="seeed_bearing__configuration_default_material" mesh="seeed_bearing__configuration_default" />
+              <geom class="visual" pos="0.02694 0.0289936 -0.0519" quat="0.707107 0 0 -0.707107" material="elec_rpi_robot_hat_pcb_material" mesh="elec_rpi_robot_hat_pcb" />
+              <geom class="visual" pos="-0.00420071 1.7776e-08 -0.0180814" quat="0.5 0.5 0.5 0.5" material="soft_mouth_top_material" mesh="soft_mouth_top" />
+              <geom class="visual" pos="-0.0045 -9.13778e-05 -0.0178" quat="0.5 0.5 0.5 0.5" material="noenoeil_material" mesh="noenoeil" />
+              <geom class="visual" pos="-0.0045 0 -0.018" quat="0.5 0.5 0.5 0.5" material="jaw_material" mesh="jaw" />
+              <geom class="collision" pos="-0.0045 0 -0.018" quat="0.5 0.5 0.5 0.5" type="mesh" material="jaw_material" mesh="jaw" />
+              <geom class="visual" pos="-0.0043 0 -0.018" quat="0.5 0.5 0.5 0.5" material="bottom_head_shell_material" mesh="bottom_head_shell" />
+              <geom class="collision" pos="-0.0043 0 -0.018" quat="0.5 0.5 0.5 0.5" type="mesh" material="bottom_head_shell_material" mesh="bottom_head_shell" />
+              <geom class="visual" pos="0.0155 -9.13778e-05 -0.05558" quat="0.5 -0.5 0.5 -0.5" material="m12_lens_holder_material" mesh="m12_lens_holder" />
+              <geom class="visual" pos="0.015435 -1.13778e-05 -0.06001" quat="0.5 -0.5 -0.5 0.5" material="pcb__raspberry_pi_zero_2_w_material" mesh="pcb__raspberry_pi_zero_2_w" />
+              <geom class="visual" pos="0.01 -0.016786 0.0260226" quat="0.5 0.5 0.5 0.5" material="speaker_material" mesh="speaker" />
+              <site name="duck0_head_camera" pos="0.0155 -9.13778e-05 -0.0733" quat="0.707107 0 0.707107 0" group="3" />
+              <site name="duck0_tof" pos="0.0135 0.0224086 -0.0733" quat="0.707107 0 0.707107 0" group="3" />
+              <site name="duck0_head_imu" pos="0.0152323 0.000111069 -0.05106" group="3" />
+              <site name="duck0_mouth_tip" pos="-0.00809334 0 -0.0777383" quat="0.704015 0 0.710185 0" group="3" />
+              <camera name="duck0_head_camera" pos="0.0155 -9.13778e-05 -0.0733" quat="0 0 -1 0" />
+            </body>
+          </body>
+        </body>
+      </body>
+      <body name="duck0_bearing_roll" pos="0.006 -0.0175 -0.005" quat="0 -0.707107 -0.707107 0">
+        <inertial pos="-8.8e-11 0.00099414 0.0168917" quat="0.99973 -0.0232487 0 0" mass="0.0230406" diaginertia="4.1964e-06 3.41989e-06 2.32413e-06" />
+        <joint name="duck0_right_hip_yaw" class="chosen_actuator" pos="0 0 0" axis="0 0 1" range="-0.523599 0.436332" />
+        <geom class="visual" pos="-0.0175 -0.002 0.0125" quat="0 1 0 0" material="yaw2roll_material" mesh="yaw2roll" />
+        <geom class="visual" pos="0 0 0.0125" quat="0 -0.707107 0.707107 0" material="xl330_material" mesh="xl330" />
+        <geom class="visual" pos="-0.0175 -0.002 0.0125" quat="0 1 0 0" material="bearing_roll_material" mesh="bearing_roll" />
+        <geom class="visual" pos="0 0.0165 0.0125" quat="0.5 0.5 0.5 -0.5" material="seeed_bearing__configuration__22x16x4_material" mesh="seeed_bearing__configuration__22x16x4" />
+        <body name="duck0_hip_l_2" pos="0 0.0165 0.0125" quat="0 0 0.707107 0.707107">
+          <inertial pos="0.014815 1.6212e-08 -0.00829992" quat="0.94694 -8.2459e-07 -0.321411 -2.79883e-07" mass="0.00618934" diaginertia="1.15976e-06 1.15753e-06 3.52458e-07" />
+          <joint name="duck0_right_hip_roll" class="chosen_actuator" pos="0 0 0" axis="0 0 1" range="-0.383972 0.383972" />
+          <geom class="visual" pos="-0.0175 0 -0.0185" quat="0.707107 -0.707107 0 0" material="hip_l_material" mesh="hip_l" />
+          <geom class="collision" pos="-0.0175 0 -0.0185" quat="0.707107 -0.707107 0 0" type="mesh" material="hip_l_material" mesh="hip_l" />
+          <geom class="visual" pos="0.025 0 -0.0185" quat="0.5 0.5 -0.5 -0.5" material="seeed_bearing__configuration__22x16x4_material" mesh="seeed_bearing__configuration__22x16x4" />
+          <body name="duck0_upper_leg_right" pos="0.025 0 -0.0185" quat="0.5 -0.5 0.5 -0.5">
+            <inertial pos="-0.006766 0.0228838 0.0134531" quat="0.365786 0.583696 -0.374279 0.620818" mass="0.0482067" diaginertia="1.98453e-05 1.9108e-05 8.11799e-06" />
+            <joint name="duck0_right_hip_pitch" class="chosen_actuator" pos="0 0 0" axis="0 0 1" range="-1.5708 1.5708" />
+            <geom class="visual" pos="-0.022 0.0357771 0.0125" quat="0.707107 0 -0.707107 0" material="xl330_material" mesh="xl330" />
+            <geom class="visual" pos="-0.022 0.0357771 0" quat="0 1 0 0" material="seeed_bearing__configuration__22x16x4_material" mesh="seeed_bearing__configuration__22x16x4" />
+            <geom class="visual" pos="0 0 0.0435" quat="0.5 -0.5 0.5 0.5" material="upper_leg_rigidity_plate_material" mesh="upper_leg_rigidity_plate" />
+            <geom class="visual" pos="0 0 -0.0425" quat="0.5 -0.5 0.5 0.5" material="upper_leg_right_material" mesh="upper_leg_right" />
+            <geom class="visual" pos="0 0 0.0125" quat="0.5 0.5 -0.5 0.5" material="xl330_material" mesh="xl330" />
+            <body name="duck0_leg_2" pos="-0.022 0.0357771 -0.004" quat="0 1 0 0">
+              <inertial pos="-0.0318937 -1.52e-10 -0.00953505" quat="0.570263 0.418091 0.418091 0.570263" mass="0.0215844" diaginertia="5.25056e-06 4.58054e-06 1.91378e-06" />
+              <joint name="duck0_right_knee" class="chosen_actuator" pos="0 0 0" axis="0 0 1" range="-1.5708 1.5708" />
+              <geom class="visual" pos="-0.042 0 -0.0115" quat="0.707107 0 -0.707107 0" material="xl330_material" mesh="xl330" />
+              <geom class="visual" pos="-0.0357771 -0.022 0.0385" quat="0.707107 0 0.707107 0" material="leg_material" mesh="leg" />
+              <geom class="collision" pos="-0.0357771 -0.022 0.0385" quat="0.707107 0 0.707107 0" type="mesh" material="leg_material" mesh="leg" />
+              <body name="duck0_ankle_right" pos="-0.042 0 -0.026" quat="0 -0.707107 -0.707107 0">
+                <inertial pos="0.00615539 -0.0137482 -0.0156566" quat="0.517424 0.501653 0.474682 0.505266" mass="0.0300251" diaginertia="1.11622e-05 7.74321e-06 5.90344e-06" />
+                <joint name="duck0_right_ankle" class="chosen_actuator" pos="0 0 0" axis="0 0 1" range="-1.5708 1.5708" />
+                <geom class="visual" pos="0.022 0.00622291 -0.0647" quat="0.5 -0.5 0.5 0.5" material="ankle_right_material" mesh="ankle_right" />
+                <geom class="visual" pos="0.022 0.00622291 -0.0647" quat="0.5 -0.5 0.5 0.5" material="sole_right_material" mesh="sole_right" />
+                <geom name="duck0_right_foot_collision" class="collision" pos="0.022 0.00622291 -0.0647" quat="0.5 -0.5 0.5 0.5" type="mesh" material="sole_right_material" mesh="sole_right" />
+                <geom class="visual" pos="0 0 -0.0292" quat="0 -1 0 0" material="seeed_bearing__configuration_default_material" mesh="seeed_bearing__configuration_default" />
+                <geom class="visual" pos="0.022 0.00622291 -0.0647" quat="0.5 -0.5 0.5 0.5" material="foot_right_material" mesh="foot_right" />
+                <site name="duck0_right_foot" pos="0 -0.0238146 -0.0140852" quat="0.707107 -0.707107 0 0" group="3" />
+              </body>
+            </body>
+          </body>
+        </body>
+      </body>
+    </body>
+    <body name="duck1_trunk_base" childclass="microduck" pos="0.0000 -0.7500 0.12">
+      <inertial pos="-0.0226332 -2.70828e-05 0.00280064" quat="0.664866 0.238381 0.235012 0.667756" mass="0.199224" diaginertia="0.000145932 0.000140799 9.85265e-05" />
+      <joint name="duck1_trunk_base_freejoint" type="free" armature="0" frictionloss="0" />
+      <geom class="visual" pos="0.006 0.0175 -0.005" quat="1 0 0 0" material="seeed_bearing__configuration__22x16x4_material" mesh="seeed_bearing__configuration__22x16x4" />
+      <geom class="visual" pos="0.004 -0.0005 -0.0175" quat="0.707107 0 0 0.707107" material="right_shell_material" mesh="right_shell" />
+      <geom class="visual" pos="0.0042 0 -0.0175215" quat="0.707107 0 0 0.707107" material="banana_pcb_locker_material" mesh="banana_pcb_locker" />
+      <geom class="visual" pos="0.004 0 -0.0175" quat="0.707107 0 0 0.707107" material="trunk_base_material" mesh="trunk_base" />
+      <geom class="visual" pos="0.006 0.0175 0.0115" quat="0 -0.707107 0 -0.707107" material="xl330_material" mesh="xl330" />
+      <geom class="visual" pos="0.004 0 -0.0175215" quat="0.707107 0 0 0.707107" material="power_support_material" mesh="power_support" />
+      <geom class="self_collision_only" pos="0.004 0 -0.0175215" quat="0.707107 0 0 0.707107" type="mesh" material="power_support_material" mesh="power_support" />
+      <geom class="visual" pos="-0.0359693 0 -0.00385049" quat="0.00617059 0.70708 -0.70708 -0.00617059" material="np_f970_material" mesh="np_f970" />
+      <geom class="collision" pos="-0.0359693 0 -0.00385049" quat="0.00617059 0.70708 -0.70708 -0.00617059" type="mesh" material="np_f970_material" mesh="np_f970" />
+      <geom class="visual" pos="0.006 -0.0175 0.0115" quat="0 -0.707107 0 -0.707107" material="xl330_material" mesh="xl330" />
+      <geom class="visual" pos="0.004 0 -0.0175785" quat="0.707107 0 0 0.707107" material="left_shell_material" mesh="left_shell" />
+      <geom class="visual" pos="0.006 -0.0175 -0.005" quat="1 0 0 0" material="seeed_bearing__configuration__22x16x4_material" mesh="seeed_bearing__configuration__22x16x4" />
+      <site name="duck1_imu" pos="-0.021 6.64098e-05 -0.0146984" group="3" />
+      <body name="duck1_yaw2roll" pos="0.006 0.0175 -0.005" quat="0 -0.707107 -0.707107 0">
+        <inertial pos="-8.8e-11 0.00099414 0.0168917" quat="0.99973 -0.0232487 0 0" mass="0.0230406" diaginertia="4.1964e-06 3.41989e-06 2.32413e-06" />
+        <joint name="duck1_left_hip_yaw" class="chosen_actuator" pos="0 0 0" axis="0 0 1" range="-0.436332 0.523599" />
+        <geom class="visual" pos="-0.0175 -0.002 0.0125" quat="0 1 0 0" material="yaw2roll_material" mesh="yaw2roll" />
+        <geom class="visual" pos="0 0 0.0125" quat="0 -0.707107 0.707107 0" material="xl330_material" mesh="xl330" />
+        <geom class="visual" pos="0 0.0165 0.0125" quat="0.5 0.5 0.5 -0.5" material="seeed_bearing__configuration__22x16x4_material" mesh="seeed_bearing__configuration__22x16x4" />
+        <geom class="visual" pos="-0.0175 -0.002 0.0125" quat="0 -1 0 0" material="bearing_roll_material" mesh="bearing_roll" />
+        <body name="duck1_hip_l" pos="0 0.0165 0.0125" quat="0.707107 -0.707107 0 0">
+          <inertial pos="0.014815 1.6179e-08 -0.00829992" quat="0.94694 -8.2459e-07 -0.321411 -2.79883e-07" mass="0.00618934" diaginertia="1.15976e-06 1.15753e-06 3.52458e-07" />
+          <joint name="duck1_left_hip_roll" class="chosen_actuator" pos="0 0 0" axis="0 0 1" range="-0.383972 0.383972" />
+          <geom class="visual" pos="0.021 0 -0.0185" quat="0.5 0.5 0.5 0.5" material="seeed_bearing__configuration__22x16x4_material" mesh="seeed_bearing__configuration__22x16x4" />
+          <geom class="visual" pos="-0.0175 0 -0.0185" quat="0.707107 -0.707107 0 0" material="hip_l_material" mesh="hip_l" />
+          <geom class="collision" pos="-0.0175 0 -0.0185" quat="0.707107 -0.707107 0 0" type="mesh" material="hip_l_material" mesh="hip_l" />
+          <body name="duck1_upper_leg_left" pos="0.025 0 -0.0185" quat="0.5 -0.5 0.5 -0.5">
+            <inertial pos="0.006766 0.0228838 0.0134531" quat="0.620818 0.374279 -0.583696 0.365786" mass="0.0482067" diaginertia="1.98453e-05 1.9108e-05 8.11799e-06" />
+            <joint name="duck1_left_hip_pitch" class="chosen_actuator" pos="0 0 0" axis="0 0 1" range="-1.5708 1.5708" />
+            <geom class="visual" pos="0 0 -0.0425" quat="0.5 -0.5 -0.5 -0.5" material="upper_leg_left_material" mesh="upper_leg_left" />
+            <geom class="visual" pos="0.022 0.0357771 0.0125" quat="0 0.707107 0 0.707107" material="xl330_material" mesh="xl330" />
+            <geom class="visual" pos="0 0 -0.0425" quat="0.5 -0.5 -0.5 -0.5" material="upper_leg_rigidity_plate_material" mesh="upper_leg_rigidity_plate" />
+            <geom class="visual" pos="0.022 0.0357771 -0.004" quat="0 0 0 1" material="seeed_bearing__configuration__22x16x4_material" mesh="seeed_bearing__configuration__22x16x4" />
+            <geom class="visual" pos="0 0 0.0125" quat="0.5 0.5 -0.5 0.5" material="xl330_material" mesh="xl330" />
+            <body name="duck1_leg" pos="0.022 0.0357771 -0.004" quat="0 0.707107 0.707107 0">
+              <inertial pos="-1.52e-10 0.0318937 -0.00953505" quat="0.806473 0.591271 0 0" mass="0.0215844" diaginertia="5.25056e-06 4.58054e-06 1.91378e-06" />
+              <joint name="duck1_left_knee" class="chosen_actuator" pos="0 0 0" axis="0 0 1" range="-1.5708 1.5708" />
+              <geom class="visual" pos="-0.022 0.0357771 0.0385" quat="0.5 0.5 0.5 -0.5" material="leg_material" mesh="leg" />
+              <geom class="collision" pos="-0.022 0.0357771 0.0385" quat="0.5 0.5 0.5 -0.5" type="mesh" material="leg_material" mesh="leg" />
+              <geom class="visual" pos="0 0.042 -0.0115" quat="0.5 -0.5 -0.5 -0.5" material="xl330_material" mesh="xl330" />
+              <body name="duck1_ankle_left" pos="0 0.042 -0.026" quat="0 -1 0 0">
+                <inertial pos="-0.00615742 -0.0137483 -0.0156585" quat="0.474723 0.505182 0.517427 0.501696" mass="0.0300246" diaginertia="1.11623e-05 7.7432e-06 5.90334e-06" />
+                <joint name="duck1_left_ankle" class="chosen_actuator" pos="0 0 0" axis="0 0 1" range="-1.5708 1.5708" />
+                <geom class="visual" pos="-0.022 0.00622291 -0.0647" quat="0.5 -0.5 -0.5 -0.5" material="sole_left_material" mesh="sole_left" />
+                <geom name="duck1_left_foot_collision" class="collision" pos="-0.022 0.00622291 -0.0647" quat="0.5 -0.5 -0.5 -0.5" type="mesh" material="sole_left_material" mesh="sole_left" />
+                <geom class="visual" pos="-0.022 0.00622291 -0.0647" quat="0.5 -0.5 -0.5 -0.5" material="foot_left_material" mesh="foot_left" />
+                <geom class="visual" pos="0 0 -0.0322" quat="0 0 0 1" material="seeed_bearing__configuration_default_material" mesh="seeed_bearing__configuration_default" />
+                <geom class="visual" pos="-0.022 0.00622291 -0.0647" quat="0.5 -0.5 -0.5 -0.5" material="ankle_left_material" mesh="ankle_left" />
+                <site name="duck1_left_foot" pos="0 -0.0238146 -0.0140852" quat="0 0 -0.707107 -0.707107" group="3" />
+              </body>
+            </body>
+          </body>
+        </body>
+      </body>
+      <body name="duck1_neck" pos="0.026 0.0145 0.0324215" quat="0 0 0.707107 -0.707107">
+        <inertial pos="0 -0.025 0.0141665" quat="0.707107 0.707107 0 0" mass="0.0368414" diaginertia="1.72925e-05 1.63707e-05 3.12694e-06" />
+        <joint name="duck1_neck_pitch" class="chosen_actuator" pos="0 0 0" axis="0 0 1" range="-1.5708 1.0472" />
+        <geom class="visual" pos="0.022 0.05 0.028" quat="0.5 0.5 0.5 -0.5" material="neck_material" mesh="neck" />
+        <geom class="visual" pos="0 0 0.0145" quat="0.5 -0.5 -0.5 -0.5" material="xl330_material" mesh="xl330" />
+        <geom class="visual" pos="0 -0.05 0.0145" quat="0.5 0.5 -0.5 0.5" material="xl330_material" mesh="xl330" />
+        <geom class="visual" pos="0.022 0.05 0.003" quat="0.5 0.5 0.5 -0.5" material="neck_material" mesh="neck" />
+        <body name="duck1_neck_pitch" pos="0 -0.05 0" quat="0 1 0 0">
+          <inertial pos="-6.533e-09 0.0116641 -0.0145" mass="0.00572" diaginertia="1.09186e-06 9.66855e-07 5.12111e-07" />
+          <joint name="duck1_head_pitch" class="chosen_actuator" pos="0 0 0" axis="0 0 1" range="-1.5708 1.5708" />
+          <geom class="visual" pos="0 0.0287931 -0.0145" quat="0.5 -0.5 -0.5 -0.5" material="neck_pitch_material" mesh="neck_pitch" />
+          <geom class="visual" pos="0 0.0207931 -0.0145" quat="0.707107 0.707107 0 0" material="seeed_bearing__configuration__22x16x4_material" mesh="seeed_bearing__configuration__22x16x4" />
+          <body name="duck1_yaw_roll_motion" pos="0 0.0186931 -0.0145" quat="0 0 -0.707107 -0.707107">
+            <inertial pos="-0.000166657 -0.00500964 0.0178065" quat="0.174483 0.690172 -0.0192577 0.702031" mass="0.0486" diaginertia="9.65512e-06 8.11788e-06 6.8878e-06" />
+            <joint name="duck1_head_yaw" class="chosen_actuator" pos="0 0 0" axis="0 0 1" range="-2.96706 2.96706" />
+            <geom class="visual" pos="0 0 0.01" quat="0.707107 0 0 0.707107" material="yaw_roll_motion_material" mesh="yaw_roll_motion" />
+            <geom class="visual" pos="0 0 0.0145" quat="0.5 -0.5 -0.5 -0.5" material="xl330_material" mesh="xl330" />
+            <geom class="visual" pos="-0.016 0 0.0145" quat="0.707107 0 -0.707107 0" material="seeed_bearing__configuration__22x16x4_material" mesh="seeed_bearing__configuration__22x16x4" />
+            <geom class="visual" pos="0.018 0 0.0145" quat="0.707107 0 -0.707107 0" material="seeed_bearing__configuration__22x16x4_material" mesh="seeed_bearing__configuration__22x16x4" />
+            <body name="duck1_jaw_soft" pos="-0.0179 0 0.0145" quat="0.707107 0 -0.707107 0">
+              <inertial pos="0.00460523 0.00120047 -0.0324761" quat="0.999608 0.0201488 -0.0191644 -0.00313932" mass="0.188766" diaginertia="0.000321067 0.000254266 0.000149461" />
+              <joint name="duck1_head_roll" class="chosen_actuator" pos="0 0 0" axis="0 0 1" range="-0.436332 0.436332" />
+              <geom class="visual" pos="0.0155 -9.13778e-05 -0.05548" quat="0.5 -0.5 0.5 -0.5" material="lens_material" mesh="lens" />
+              <geom class="visual" pos="-0.0045 -9.13778e-05 -0.0178" quat="0.5 0.5 0.5 0.5" material="face_part_material" mesh="face_part" />
+              <geom class="visual" pos="0.003 0.0255 -0.018" quat="0.707107 0 0 -0.707107" material="xl330_material" mesh="xl330" />
+              <geom class="visual" pos="-0.0046 0 -0.0179996" quat="0.5 0.5 0.5 0.5" material="jaw_soft_material" mesh="jaw_soft" />
+              <geom class="visual" pos="-0.0045 0 -0.018" quat="0.5 0.5 0.5 0.5" material="motor_support_material" mesh="motor_support" />
+              <geom class="visual" pos="-0.0045 0 -0.018" quat="0.5 0.5 0.5 0.5" material="top_head_shell_material" mesh="top_head_shell" />
+              <geom class="collision" pos="-0.0045 0 -0.018" quat="0.5 0.5 0.5 0.5" type="mesh" material="top_head_shell_material" mesh="top_head_shell" />
+              <geom class="visual" pos="0 0 0.0145" quat="0.5 -0.5 -0.5 -0.5" material="xl330_material" mesh="xl330" />
+              <geom class="visual" pos="0.0032 -0.04 -0.018" quat="0.5 -0.5 0.5 0.5" material="seeed_bearing__configuration_default_material" mesh="seeed_bearing__configuration_default" />
+              <geom class="visual" pos="0.02694 0.0289936 -0.0519" quat="0.707107 0 0 -0.707107" material="elec_rpi_robot_hat_pcb_material" mesh="elec_rpi_robot_hat_pcb" />
+              <geom class="visual" pos="-0.00420071 1.7776e-08 -0.0180814" quat="0.5 0.5 0.5 0.5" material="soft_mouth_top_material" mesh="soft_mouth_top" />
+              <geom class="visual" pos="-0.0045 -9.13778e-05 -0.0178" quat="0.5 0.5 0.5 0.5" material="noenoeil_material" mesh="noenoeil" />
+              <geom class="visual" pos="-0.0045 0 -0.018" quat="0.5 0.5 0.5 0.5" material="jaw_material" mesh="jaw" />
+              <geom class="collision" pos="-0.0045 0 -0.018" quat="0.5 0.5 0.5 0.5" type="mesh" material="jaw_material" mesh="jaw" />
+              <geom class="visual" pos="-0.0043 0 -0.018" quat="0.5 0.5 0.5 0.5" material="bottom_head_shell_material" mesh="bottom_head_shell" />
+              <geom class="collision" pos="-0.0043 0 -0.018" quat="0.5 0.5 0.5 0.5" type="mesh" material="bottom_head_shell_material" mesh="bottom_head_shell" />
+              <geom class="visual" pos="0.0155 -9.13778e-05 -0.05558" quat="0.5 -0.5 0.5 -0.5" material="m12_lens_holder_material" mesh="m12_lens_holder" />
+              <geom class="visual" pos="0.015435 -1.13778e-05 -0.06001" quat="0.5 -0.5 -0.5 0.5" material="pcb__raspberry_pi_zero_2_w_material" mesh="pcb__raspberry_pi_zero_2_w" />
+              <geom class="visual" pos="0.01 -0.016786 0.0260226" quat="0.5 0.5 0.5 0.5" material="speaker_material" mesh="speaker" />
+              <site name="duck1_head_camera" pos="0.0155 -9.13778e-05 -0.0733" quat="0.707107 0 0.707107 0" group="3" />
+              <site name="duck1_tof" pos="0.0135 0.0224086 -0.0733" quat="0.707107 0 0.707107 0" group="3" />
+              <site name="duck1_head_imu" pos="0.0152323 0.000111069 -0.05106" group="3" />
+              <site name="duck1_mouth_tip" pos="-0.00809334 0 -0.0777383" quat="0.704015 0 0.710185 0" group="3" />
+              <camera name="duck1_head_camera" pos="0.0155 -9.13778e-05 -0.0733" quat="0 0 -1 0" />
+            </body>
+          </body>
+        </body>
+      </body>
+      <body name="duck1_bearing_roll" pos="0.006 -0.0175 -0.005" quat="0 -0.707107 -0.707107 0">
+        <inertial pos="-8.8e-11 0.00099414 0.0168917" quat="0.99973 -0.0232487 0 0" mass="0.0230406" diaginertia="4.1964e-06 3.41989e-06 2.32413e-06" />
+        <joint name="duck1_right_hip_yaw" class="chosen_actuator" pos="0 0 0" axis="0 0 1" range="-0.523599 0.436332" />
+        <geom class="visual" pos="-0.0175 -0.002 0.0125" quat="0 1 0 0" material="yaw2roll_material" mesh="yaw2roll" />
+        <geom class="visual" pos="0 0 0.0125" quat="0 -0.707107 0.707107 0" material="xl330_material" mesh="xl330" />
+        <geom class="visual" pos="-0.0175 -0.002 0.0125" quat="0 1 0 0" material="bearing_roll_material" mesh="bearing_roll" />
+        <geom class="visual" pos="0 0.0165 0.0125" quat="0.5 0.5 0.5 -0.5" material="seeed_bearing__configuration__22x16x4_material" mesh="seeed_bearing__configuration__22x16x4" />
+        <body name="duck1_hip_l_2" pos="0 0.0165 0.0125" quat="0 0 0.707107 0.707107">
+          <inertial pos="0.014815 1.6212e-08 -0.00829992" quat="0.94694 -8.2459e-07 -0.321411 -2.79883e-07" mass="0.00618934" diaginertia="1.15976e-06 1.15753e-06 3.52458e-07" />
+          <joint name="duck1_right_hip_roll" class="chosen_actuator" pos="0 0 0" axis="0 0 1" range="-0.383972 0.383972" />
+          <geom class="visual" pos="-0.0175 0 -0.0185" quat="0.707107 -0.707107 0 0" material="hip_l_material" mesh="hip_l" />
+          <geom class="collision" pos="-0.0175 0 -0.0185" quat="0.707107 -0.707107 0 0" type="mesh" material="hip_l_material" mesh="hip_l" />
+          <geom class="visual" pos="0.025 0 -0.0185" quat="0.5 0.5 -0.5 -0.5" material="seeed_bearing__configuration__22x16x4_material" mesh="seeed_bearing__configuration__22x16x4" />
+          <body name="duck1_upper_leg_right" pos="0.025 0 -0.0185" quat="0.5 -0.5 0.5 -0.5">
+            <inertial pos="-0.006766 0.0228838 0.0134531" quat="0.365786 0.583696 -0.374279 0.620818" mass="0.0482067" diaginertia="1.98453e-05 1.9108e-05 8.11799e-06" />
+            <joint name="duck1_right_hip_pitch" class="chosen_actuator" pos="0 0 0" axis="0 0 1" range="-1.5708 1.5708" />
+            <geom class="visual" pos="-0.022 0.0357771 0.0125" quat="0.707107 0 -0.707107 0" material="xl330_material" mesh="xl330" />
+            <geom class="visual" pos="-0.022 0.0357771 0" quat="0 1 0 0" material="seeed_bearing__configuration__22x16x4_material" mesh="seeed_bearing__configuration__22x16x4" />
+            <geom class="visual" pos="0 0 0.0435" quat="0.5 -0.5 0.5 0.5" material="upper_leg_rigidity_plate_material" mesh="upper_leg_rigidity_plate" />
+            <geom class="visual" pos="0 0 -0.0425" quat="0.5 -0.5 0.5 0.5" material="upper_leg_right_material" mesh="upper_leg_right" />
+            <geom class="visual" pos="0 0 0.0125" quat="0.5 0.5 -0.5 0.5" material="xl330_material" mesh="xl330" />
+            <body name="duck1_leg_2" pos="-0.022 0.0357771 -0.004" quat="0 1 0 0">
+              <inertial pos="-0.0318937 -1.52e-10 -0.00953505" quat="0.570263 0.418091 0.418091 0.570263" mass="0.0215844" diaginertia="5.25056e-06 4.58054e-06 1.91378e-06" />
+              <joint name="duck1_right_knee" class="chosen_actuator" pos="0 0 0" axis="0 0 1" range="-1.5708 1.5708" />
+              <geom class="visual" pos="-0.042 0 -0.0115" quat="0.707107 0 -0.707107 0" material="xl330_material" mesh="xl330" />
+              <geom class="visual" pos="-0.0357771 -0.022 0.0385" quat="0.707107 0 0.707107 0" material="leg_material" mesh="leg" />
+              <geom class="collision" pos="-0.0357771 -0.022 0.0385" quat="0.707107 0 0.707107 0" type="mesh" material="leg_material" mesh="leg" />
+              <body name="duck1_ankle_right" pos="-0.042 0 -0.026" quat="0 -0.707107 -0.707107 0">
+                <inertial pos="0.00615539 -0.0137482 -0.0156566" quat="0.517424 0.501653 0.474682 0.505266" mass="0.0300251" diaginertia="1.11622e-05 7.74321e-06 5.90344e-06" />
+                <joint name="duck1_right_ankle" class="chosen_actuator" pos="0 0 0" axis="0 0 1" range="-1.5708 1.5708" />
+                <geom class="visual" pos="0.022 0.00622291 -0.0647" quat="0.5 -0.5 0.5 0.5" material="ankle_right_material" mesh="ankle_right" />
+                <geom class="visual" pos="0.022 0.00622291 -0.0647" quat="0.5 -0.5 0.5 0.5" material="sole_right_material" mesh="sole_right" />
+                <geom name="duck1_right_foot_collision" class="collision" pos="0.022 0.00622291 -0.0647" quat="0.5 -0.5 0.5 0.5" type="mesh" material="sole_right_material" mesh="sole_right" />
+                <geom class="visual" pos="0 0 -0.0292" quat="0 -1 0 0" material="seeed_bearing__configuration_default_material" mesh="seeed_bearing__configuration_default" />
+                <geom class="visual" pos="0.022 0.00622291 -0.0647" quat="0.5 -0.5 0.5 0.5" material="foot_right_material" mesh="foot_right" />
+                <site name="duck1_right_foot" pos="0 -0.0238146 -0.0140852" quat="0.707107 -0.707107 0 0" group="3" />
+              </body>
+            </body>
+          </body>
+        </body>
+      </body>
+    </body>
+    <body name="duck2_trunk_base" childclass="microduck" pos="0.0000 -0.2500 0.12">
+      <inertial pos="-0.0226332 -2.70828e-05 0.00280064" quat="0.664866 0.238381 0.235012 0.667756" mass="0.199224" diaginertia="0.000145932 0.000140799 9.85265e-05" />
+      <joint name="duck2_trunk_base_freejoint" type="free" armature="0" frictionloss="0" />
+      <geom class="visual" pos="0.006 0.0175 -0.005" quat="1 0 0 0" material="seeed_bearing__configuration__22x16x4_material" mesh="seeed_bearing__configuration__22x16x4" />
+      <geom class="visual" pos="0.004 -0.0005 -0.0175" quat="0.707107 0 0 0.707107" material="right_shell_material" mesh="right_shell" />
+      <geom class="visual" pos="0.0042 0 -0.0175215" quat="0.707107 0 0 0.707107" material="banana_pcb_locker_material" mesh="banana_pcb_locker" />
+      <geom class="visual" pos="0.004 0 -0.0175" quat="0.707107 0 0 0.707107" material="trunk_base_material" mesh="trunk_base" />
+      <geom class="visual" pos="0.006 0.0175 0.0115" quat="0 -0.707107 0 -0.707107" material="xl330_material" mesh="xl330" />
+      <geom class="visual" pos="0.004 0 -0.0175215" quat="0.707107 0 0 0.707107" material="power_support_material" mesh="power_support" />
+      <geom class="self_collision_only" pos="0.004 0 -0.0175215" quat="0.707107 0 0 0.707107" type="mesh" material="power_support_material" mesh="power_support" />
+      <geom class="visual" pos="-0.0359693 0 -0.00385049" quat="0.00617059 0.70708 -0.70708 -0.00617059" material="np_f970_material" mesh="np_f970" />
+      <geom class="collision" pos="-0.0359693 0 -0.00385049" quat="0.00617059 0.70708 -0.70708 -0.00617059" type="mesh" material="np_f970_material" mesh="np_f970" />
+      <geom class="visual" pos="0.006 -0.0175 0.0115" quat="0 -0.707107 0 -0.707107" material="xl330_material" mesh="xl330" />
+      <geom class="visual" pos="0.004 0 -0.0175785" quat="0.707107 0 0 0.707107" material="left_shell_material" mesh="left_shell" />
+      <geom class="visual" pos="0.006 -0.0175 -0.005" quat="1 0 0 0" material="seeed_bearing__configuration__22x16x4_material" mesh="seeed_bearing__configuration__22x16x4" />
+      <site name="duck2_imu" pos="-0.021 6.64098e-05 -0.0146984" group="3" />
+      <body name="duck2_yaw2roll" pos="0.006 0.0175 -0.005" quat="0 -0.707107 -0.707107 0">
+        <inertial pos="-8.8e-11 0.00099414 0.0168917" quat="0.99973 -0.0232487 0 0" mass="0.0230406" diaginertia="4.1964e-06 3.41989e-06 2.32413e-06" />
+        <joint name="duck2_left_hip_yaw" class="chosen_actuator" pos="0 0 0" axis="0 0 1" range="-0.436332 0.523599" />
+        <geom class="visual" pos="-0.0175 -0.002 0.0125" quat="0 1 0 0" material="yaw2roll_material" mesh="yaw2roll" />
+        <geom class="visual" pos="0 0 0.0125" quat="0 -0.707107 0.707107 0" material="xl330_material" mesh="xl330" />
+        <geom class="visual" pos="0 0.0165 0.0125" quat="0.5 0.5 0.5 -0.5" material="seeed_bearing__configuration__22x16x4_material" mesh="seeed_bearing__configuration__22x16x4" />
+        <geom class="visual" pos="-0.0175 -0.002 0.0125" quat="0 -1 0 0" material="bearing_roll_material" mesh="bearing_roll" />
+        <body name="duck2_hip_l" pos="0 0.0165 0.0125" quat="0.707107 -0.707107 0 0">
+          <inertial pos="0.014815 1.6179e-08 -0.00829992" quat="0.94694 -8.2459e-07 -0.321411 -2.79883e-07" mass="0.00618934" diaginertia="1.15976e-06 1.15753e-06 3.52458e-07" />
+          <joint name="duck2_left_hip_roll" class="chosen_actuator" pos="0 0 0" axis="0 0 1" range="-0.383972 0.383972" />
+          <geom class="visual" pos="0.021 0 -0.0185" quat="0.5 0.5 0.5 0.5" material="seeed_bearing__configuration__22x16x4_material" mesh="seeed_bearing__configuration__22x16x4" />
+          <geom class="visual" pos="-0.0175 0 -0.0185" quat="0.707107 -0.707107 0 0" material="hip_l_material" mesh="hip_l" />
+          <geom class="collision" pos="-0.0175 0 -0.0185" quat="0.707107 -0.707107 0 0" type="mesh" material="hip_l_material" mesh="hip_l" />
+          <body name="duck2_upper_leg_left" pos="0.025 0 -0.0185" quat="0.5 -0.5 0.5 -0.5">
+            <inertial pos="0.006766 0.0228838 0.0134531" quat="0.620818 0.374279 -0.583696 0.365786" mass="0.0482067" diaginertia="1.98453e-05 1.9108e-05 8.11799e-06" />
+            <joint name="duck2_left_hip_pitch" class="chosen_actuator" pos="0 0 0" axis="0 0 1" range="-1.5708 1.5708" />
+            <geom class="visual" pos="0 0 -0.0425" quat="0.5 -0.5 -0.5 -0.5" material="upper_leg_left_material" mesh="upper_leg_left" />
+            <geom class="visual" pos="0.022 0.0357771 0.0125" quat="0 0.707107 0 0.707107" material="xl330_material" mesh="xl330" />
+            <geom class="visual" pos="0 0 -0.0425" quat="0.5 -0.5 -0.5 -0.5" material="upper_leg_rigidity_plate_material" mesh="upper_leg_rigidity_plate" />
+            <geom class="visual" pos="0.022 0.0357771 -0.004" quat="0 0 0 1" material="seeed_bearing__configuration__22x16x4_material" mesh="seeed_bearing__configuration__22x16x4" />
+            <geom class="visual" pos="0 0 0.0125" quat="0.5 0.5 -0.5 0.5" material="xl330_material" mesh="xl330" />
+            <body name="duck2_leg" pos="0.022 0.0357771 -0.004" quat="0 0.707107 0.707107 0">
+              <inertial pos="-1.52e-10 0.0318937 -0.00953505" quat="0.806473 0.591271 0 0" mass="0.0215844" diaginertia="5.25056e-06 4.58054e-06 1.91378e-06" />
+              <joint name="duck2_left_knee" class="chosen_actuator" pos="0 0 0" axis="0 0 1" range="-1.5708 1.5708" />
+              <geom class="visual" pos="-0.022 0.0357771 0.0385" quat="0.5 0.5 0.5 -0.5" material="leg_material" mesh="leg" />
+              <geom class="collision" pos="-0.022 0.0357771 0.0385" quat="0.5 0.5 0.5 -0.5" type="mesh" material="leg_material" mesh="leg" />
+              <geom class="visual" pos="0 0.042 -0.0115" quat="0.5 -0.5 -0.5 -0.5" material="xl330_material" mesh="xl330" />
+              <body name="duck2_ankle_left" pos="0 0.042 -0.026" quat="0 -1 0 0">
+                <inertial pos="-0.00615742 -0.0137483 -0.0156585" quat="0.474723 0.505182 0.517427 0.501696" mass="0.0300246" diaginertia="1.11623e-05 7.7432e-06 5.90334e-06" />
+                <joint name="duck2_left_ankle" class="chosen_actuator" pos="0 0 0" axis="0 0 1" range="-1.5708 1.5708" />
+                <geom class="visual" pos="-0.022 0.00622291 -0.0647" quat="0.5 -0.5 -0.5 -0.5" material="sole_left_material" mesh="sole_left" />
+                <geom name="duck2_left_foot_collision" class="collision" pos="-0.022 0.00622291 -0.0647" quat="0.5 -0.5 -0.5 -0.5" type="mesh" material="sole_left_material" mesh="sole_left" />
+                <geom class="visual" pos="-0.022 0.00622291 -0.0647" quat="0.5 -0.5 -0.5 -0.5" material="foot_left_material" mesh="foot_left" />
+                <geom class="visual" pos="0 0 -0.0322" quat="0 0 0 1" material="seeed_bearing__configuration_default_material" mesh="seeed_bearing__configuration_default" />
+                <geom class="visual" pos="-0.022 0.00622291 -0.0647" quat="0.5 -0.5 -0.5 -0.5" material="ankle_left_material" mesh="ankle_left" />
+                <site name="duck2_left_foot" pos="0 -0.0238146 -0.0140852" quat="0 0 -0.707107 -0.707107" group="3" />
+              </body>
+            </body>
+          </body>
+        </body>
+      </body>
+      <body name="duck2_neck" pos="0.026 0.0145 0.0324215" quat="0 0 0.707107 -0.707107">
+        <inertial pos="0 -0.025 0.0141665" quat="0.707107 0.707107 0 0" mass="0.0368414" diaginertia="1.72925e-05 1.63707e-05 3.12694e-06" />
+        <joint name="duck2_neck_pitch" class="chosen_actuator" pos="0 0 0" axis="0 0 1" range="-1.5708 1.0472" />
+        <geom class="visual" pos="0.022 0.05 0.028" quat="0.5 0.5 0.5 -0.5" material="neck_material" mesh="neck" />
+        <geom class="visual" pos="0 0 0.0145" quat="0.5 -0.5 -0.5 -0.5" material="xl330_material" mesh="xl330" />
+        <geom class="visual" pos="0 -0.05 0.0145" quat="0.5 0.5 -0.5 0.5" material="xl330_material" mesh="xl330" />
+        <geom class="visual" pos="0.022 0.05 0.003" quat="0.5 0.5 0.5 -0.5" material="neck_material" mesh="neck" />
+        <body name="duck2_neck_pitch" pos="0 -0.05 0" quat="0 1 0 0">
+          <inertial pos="-6.533e-09 0.0116641 -0.0145" mass="0.00572" diaginertia="1.09186e-06 9.66855e-07 5.12111e-07" />
+          <joint name="duck2_head_pitch" class="chosen_actuator" pos="0 0 0" axis="0 0 1" range="-1.5708 1.5708" />
+          <geom class="visual" pos="0 0.0287931 -0.0145" quat="0.5 -0.5 -0.5 -0.5" material="neck_pitch_material" mesh="neck_pitch" />
+          <geom class="visual" pos="0 0.0207931 -0.0145" quat="0.707107 0.707107 0 0" material="seeed_bearing__configuration__22x16x4_material" mesh="seeed_bearing__configuration__22x16x4" />
+          <body name="duck2_yaw_roll_motion" pos="0 0.0186931 -0.0145" quat="0 0 -0.707107 -0.707107">
+            <inertial pos="-0.000166657 -0.00500964 0.0178065" quat="0.174483 0.690172 -0.0192577 0.702031" mass="0.0486" diaginertia="9.65512e-06 8.11788e-06 6.8878e-06" />
+            <joint name="duck2_head_yaw" class="chosen_actuator" pos="0 0 0" axis="0 0 1" range="-2.96706 2.96706" />
+            <geom class="visual" pos="0 0 0.01" quat="0.707107 0 0 0.707107" material="yaw_roll_motion_material" mesh="yaw_roll_motion" />
+            <geom class="visual" pos="0 0 0.0145" quat="0.5 -0.5 -0.5 -0.5" material="xl330_material" mesh="xl330" />
+            <geom class="visual" pos="-0.016 0 0.0145" quat="0.707107 0 -0.707107 0" material="seeed_bearing__configuration__22x16x4_material" mesh="seeed_bearing__configuration__22x16x4" />
+            <geom class="visual" pos="0.018 0 0.0145" quat="0.707107 0 -0.707107 0" material="seeed_bearing__configuration__22x16x4_material" mesh="seeed_bearing__configuration__22x16x4" />
+            <body name="duck2_jaw_soft" pos="-0.0179 0 0.0145" quat="0.707107 0 -0.707107 0">
+              <inertial pos="0.00460523 0.00120047 -0.0324761" quat="0.999608 0.0201488 -0.0191644 -0.00313932" mass="0.188766" diaginertia="0.000321067 0.000254266 0.000149461" />
+              <joint name="duck2_head_roll" class="chosen_actuator" pos="0 0 0" axis="0 0 1" range="-0.436332 0.436332" />
+              <geom class="visual" pos="0.0155 -9.13778e-05 -0.05548" quat="0.5 -0.5 0.5 -0.5" material="lens_material" mesh="lens" />
+              <geom class="visual" pos="-0.0045 -9.13778e-05 -0.0178" quat="0.5 0.5 0.5 0.5" material="face_part_material" mesh="face_part" />
+              <geom class="visual" pos="0.003 0.0255 -0.018" quat="0.707107 0 0 -0.707107" material="xl330_material" mesh="xl330" />
+              <geom class="visual" pos="-0.0046 0 -0.0179996" quat="0.5 0.5 0.5 0.5" material="jaw_soft_material" mesh="jaw_soft" />
+              <geom class="visual" pos="-0.0045 0 -0.018" quat="0.5 0.5 0.5 0.5" material="motor_support_material" mesh="motor_support" />
+              <geom class="visual" pos="-0.0045 0 -0.018" quat="0.5 0.5 0.5 0.5" material="top_head_shell_material" mesh="top_head_shell" />
+              <geom class="collision" pos="-0.0045 0 -0.018" quat="0.5 0.5 0.5 0.5" type="mesh" material="top_head_shell_material" mesh="top_head_shell" />
+              <geom class="visual" pos="0 0 0.0145" quat="0.5 -0.5 -0.5 -0.5" material="xl330_material" mesh="xl330" />
+              <geom class="visual" pos="0.0032 -0.04 -0.018" quat="0.5 -0.5 0.5 0.5" material="seeed_bearing__configuration_default_material" mesh="seeed_bearing__configuration_default" />
+              <geom class="visual" pos="0.02694 0.0289936 -0.0519" quat="0.707107 0 0 -0.707107" material="elec_rpi_robot_hat_pcb_material" mesh="elec_rpi_robot_hat_pcb" />
+              <geom class="visual" pos="-0.00420071 1.7776e-08 -0.0180814" quat="0.5 0.5 0.5 0.5" material="soft_mouth_top_material" mesh="soft_mouth_top" />
+              <geom class="visual" pos="-0.0045 -9.13778e-05 -0.0178" quat="0.5 0.5 0.5 0.5" material="noenoeil_material" mesh="noenoeil" />
+              <geom class="visual" pos="-0.0045 0 -0.018" quat="0.5 0.5 0.5 0.5" material="jaw_material" mesh="jaw" />
+              <geom class="collision" pos="-0.0045 0 -0.018" quat="0.5 0.5 0.5 0.5" type="mesh" material="jaw_material" mesh="jaw" />
+              <geom class="visual" pos="-0.0043 0 -0.018" quat="0.5 0.5 0.5 0.5" material="bottom_head_shell_material" mesh="bottom_head_shell" />
+              <geom class="collision" pos="-0.0043 0 -0.018" quat="0.5 0.5 0.5 0.5" type="mesh" material="bottom_head_shell_material" mesh="bottom_head_shell" />
+              <geom class="visual" pos="0.0155 -9.13778e-05 -0.05558" quat="0.5 -0.5 0.5 -0.5" material="m12_lens_holder_material" mesh="m12_lens_holder" />
+              <geom class="visual" pos="0.015435 -1.13778e-05 -0.06001" quat="0.5 -0.5 -0.5 0.5" material="pcb__raspberry_pi_zero_2_w_material" mesh="pcb__raspberry_pi_zero_2_w" />
+              <geom class="visual" pos="0.01 -0.016786 0.0260226" quat="0.5 0.5 0.5 0.5" material="speaker_material" mesh="speaker" />
+              <site name="duck2_head_camera" pos="0.0155 -9.13778e-05 -0.0733" quat="0.707107 0 0.707107 0" group="3" />
+              <site name="duck2_tof" pos="0.0135 0.0224086 -0.0733" quat="0.707107 0 0.707107 0" group="3" />
+              <site name="duck2_head_imu" pos="0.0152323 0.000111069 -0.05106" group="3" />
+              <site name="duck2_mouth_tip" pos="-0.00809334 0 -0.0777383" quat="0.704015 0 0.710185 0" group="3" />
+              <camera name="duck2_head_camera" pos="0.0155 -9.13778e-05 -0.0733" quat="0 0 -1 0" />
+            </body>
+          </body>
+        </body>
+      </body>
+      <body name="duck2_bearing_roll" pos="0.006 -0.0175 -0.005" quat="0 -0.707107 -0.707107 0">
+        <inertial pos="-8.8e-11 0.00099414 0.0168917" quat="0.99973 -0.0232487 0 0" mass="0.0230406" diaginertia="4.1964e-06 3.41989e-06 2.32413e-06" />
+        <joint name="duck2_right_hip_yaw" class="chosen_actuator" pos="0 0 0" axis="0 0 1" range="-0.523599 0.436332" />
+        <geom class="visual" pos="-0.0175 -0.002 0.0125" quat="0 1 0 0" material="yaw2roll_material" mesh="yaw2roll" />
+        <geom class="visual" pos="0 0 0.0125" quat="0 -0.707107 0.707107 0" material="xl330_material" mesh="xl330" />
+        <geom class="visual" pos="-0.0175 -0.002 0.0125" quat="0 1 0 0" material="bearing_roll_material" mesh="bearing_roll" />
+        <geom class="visual" pos="0 0.0165 0.0125" quat="0.5 0.5 0.5 -0.5" material="seeed_bearing__configuration__22x16x4_material" mesh="seeed_bearing__configuration__22x16x4" />
+        <body name="duck2_hip_l_2" pos="0 0.0165 0.0125" quat="0 0 0.707107 0.707107">
+          <inertial pos="0.014815 1.6212e-08 -0.00829992" quat="0.94694 -8.2459e-07 -0.321411 -2.79883e-07" mass="0.00618934" diaginertia="1.15976e-06 1.15753e-06 3.52458e-07" />
+          <joint name="duck2_right_hip_roll" class="chosen_actuator" pos="0 0 0" axis="0 0 1" range="-0.383972 0.383972" />
+          <geom class="visual" pos="-0.0175 0 -0.0185" quat="0.707107 -0.707107 0 0" material="hip_l_material" mesh="hip_l" />
+          <geom class="collision" pos="-0.0175 0 -0.0185" quat="0.707107 -0.707107 0 0" type="mesh" material="hip_l_material" mesh="hip_l" />
+          <geom class="visual" pos="0.025 0 -0.0185" quat="0.5 0.5 -0.5 -0.5" material="seeed_bearing__configuration__22x16x4_material" mesh="seeed_bearing__configuration__22x16x4" />
+          <body name="duck2_upper_leg_right" pos="0.025 0 -0.0185" quat="0.5 -0.5 0.5 -0.5">
+            <inertial pos="-0.006766 0.0228838 0.0134531" quat="0.365786 0.583696 -0.374279 0.620818" mass="0.0482067" diaginertia="1.98453e-05 1.9108e-05 8.11799e-06" />
+            <joint name="duck2_right_hip_pitch" class="chosen_actuator" pos="0 0 0" axis="0 0 1" range="-1.5708 1.5708" />
+            <geom class="visual" pos="-0.022 0.0357771 0.0125" quat="0.707107 0 -0.707107 0" material="xl330_material" mesh="xl330" />
+            <geom class="visual" pos="-0.022 0.0357771 0" quat="0 1 0 0" material="seeed_bearing__configuration__22x16x4_material" mesh="seeed_bearing__configuration__22x16x4" />
+            <geom class="visual" pos="0 0 0.0435" quat="0.5 -0.5 0.5 0.5" material="upper_leg_rigidity_plate_material" mesh="upper_leg_rigidity_plate" />
+            <geom class="visual" pos="0 0 -0.0425" quat="0.5 -0.5 0.5 0.5" material="upper_leg_right_material" mesh="upper_leg_right" />
+            <geom class="visual" pos="0 0 0.0125" quat="0.5 0.5 -0.5 0.5" material="xl330_material" mesh="xl330" />
+            <body name="duck2_leg_2" pos="-0.022 0.0357771 -0.004" quat="0 1 0 0">
+              <inertial pos="-0.0318937 -1.52e-10 -0.00953505" quat="0.570263 0.418091 0.418091 0.570263" mass="0.0215844" diaginertia="5.25056e-06 4.58054e-06 1.91378e-06" />
+              <joint name="duck2_right_knee" class="chosen_actuator" pos="0 0 0" axis="0 0 1" range="-1.5708 1.5708" />
+              <geom class="visual" pos="-0.042 0 -0.0115" quat="0.707107 0 -0.707107 0" material="xl330_material" mesh="xl330" />
+              <geom class="visual" pos="-0.0357771 -0.022 0.0385" quat="0.707107 0 0.707107 0" material="leg_material" mesh="leg" />
+              <geom class="collision" pos="-0.0357771 -0.022 0.0385" quat="0.707107 0 0.707107 0" type="mesh" material="leg_material" mesh="leg" />
+              <body name="duck2_ankle_right" pos="-0.042 0 -0.026" quat="0 -0.707107 -0.707107 0">
+                <inertial pos="0.00615539 -0.0137482 -0.0156566" quat="0.517424 0.501653 0.474682 0.505266" mass="0.0300251" diaginertia="1.11622e-05 7.74321e-06 5.90344e-06" />
+                <joint name="duck2_right_ankle" class="chosen_actuator" pos="0 0 0" axis="0 0 1" range="-1.5708 1.5708" />
+                <geom class="visual" pos="0.022 0.00622291 -0.0647" quat="0.5 -0.5 0.5 0.5" material="ankle_right_material" mesh="ankle_right" />
+                <geom class="visual" pos="0.022 0.00622291 -0.0647" quat="0.5 -0.5 0.5 0.5" material="sole_right_material" mesh="sole_right" />
+                <geom name="duck2_right_foot_collision" class="collision" pos="0.022 0.00622291 -0.0647" quat="0.5 -0.5 0.5 0.5" type="mesh" material="sole_right_material" mesh="sole_right" />
+                <geom class="visual" pos="0 0 -0.0292" quat="0 -1 0 0" material="seeed_bearing__configuration_default_material" mesh="seeed_bearing__configuration_default" />
+                <geom class="visual" pos="0.022 0.00622291 -0.0647" quat="0.5 -0.5 0.5 0.5" material="foot_right_material" mesh="foot_right" />
+                <site name="duck2_right_foot" pos="0 -0.0238146 -0.0140852" quat="0.707107 -0.707107 0 0" group="3" />
+              </body>
+            </body>
+          </body>
+        </body>
+      </body>
+    </body>
+    <body name="duck3_trunk_base" childclass="microduck" pos="0.0000 0.2500 0.12">
+      <inertial pos="-0.0226332 -2.70828e-05 0.00280064" quat="0.664866 0.238381 0.235012 0.667756" mass="0.199224" diaginertia="0.000145932 0.000140799 9.85265e-05" />
+      <joint name="duck3_trunk_base_freejoint" type="free" armature="0" frictionloss="0" />
+      <geom class="visual" pos="0.006 0.0175 -0.005" quat="1 0 0 0" material="seeed_bearing__configuration__22x16x4_material" mesh="seeed_bearing__configuration__22x16x4" />
+      <geom class="visual" pos="0.004 -0.0005 -0.0175" quat="0.707107 0 0 0.707107" material="right_shell_material" mesh="right_shell" />
+      <geom class="visual" pos="0.0042 0 -0.0175215" quat="0.707107 0 0 0.707107" material="banana_pcb_locker_material" mesh="banana_pcb_locker" />
+      <geom class="visual" pos="0.004 0 -0.0175" quat="0.707107 0 0 0.707107" material="trunk_base_material" mesh="trunk_base" />
+      <geom class="visual" pos="0.006 0.0175 0.0115" quat="0 -0.707107 0 -0.707107" material="xl330_material" mesh="xl330" />
+      <geom class="visual" pos="0.004 0 -0.0175215" quat="0.707107 0 0 0.707107" material="power_support_material" mesh="power_support" />
+      <geom class="self_collision_only" pos="0.004 0 -0.0175215" quat="0.707107 0 0 0.707107" type="mesh" material="power_support_material" mesh="power_support" />
+      <geom class="visual" pos="-0.0359693 0 -0.00385049" quat="0.00617059 0.70708 -0.70708 -0.00617059" material="np_f970_material" mesh="np_f970" />
+      <geom class="collision" pos="-0.0359693 0 -0.00385049" quat="0.00617059 0.70708 -0.70708 -0.00617059" type="mesh" material="np_f970_material" mesh="np_f970" />
+      <geom class="visual" pos="0.006 -0.0175 0.0115" quat="0 -0.707107 0 -0.707107" material="xl330_material" mesh="xl330" />
+      <geom class="visual" pos="0.004 0 -0.0175785" quat="0.707107 0 0 0.707107" material="left_shell_material" mesh="left_shell" />
+      <geom class="visual" pos="0.006 -0.0175 -0.005" quat="1 0 0 0" material="seeed_bearing__configuration__22x16x4_material" mesh="seeed_bearing__configuration__22x16x4" />
+      <site name="duck3_imu" pos="-0.021 6.64098e-05 -0.0146984" group="3" />
+      <body name="duck3_yaw2roll" pos="0.006 0.0175 -0.005" quat="0 -0.707107 -0.707107 0">
+        <inertial pos="-8.8e-11 0.00099414 0.0168917" quat="0.99973 -0.0232487 0 0" mass="0.0230406" diaginertia="4.1964e-06 3.41989e-06 2.32413e-06" />
+        <joint name="duck3_left_hip_yaw" class="chosen_actuator" pos="0 0 0" axis="0 0 1" range="-0.436332 0.523599" />
+        <geom class="visual" pos="-0.0175 -0.002 0.0125" quat="0 1 0 0" material="yaw2roll_material" mesh="yaw2roll" />
+        <geom class="visual" pos="0 0 0.0125" quat="0 -0.707107 0.707107 0" material="xl330_material" mesh="xl330" />
+        <geom class="visual" pos="0 0.0165 0.0125" quat="0.5 0.5 0.5 -0.5" material="seeed_bearing__configuration__22x16x4_material" mesh="seeed_bearing__configuration__22x16x4" />
+        <geom class="visual" pos="-0.0175 -0.002 0.0125" quat="0 -1 0 0" material="bearing_roll_material" mesh="bearing_roll" />
+        <body name="duck3_hip_l" pos="0 0.0165 0.0125" quat="0.707107 -0.707107 0 0">
+          <inertial pos="0.014815 1.6179e-08 -0.00829992" quat="0.94694 -8.2459e-07 -0.321411 -2.79883e-07" mass="0.00618934" diaginertia="1.15976e-06 1.15753e-06 3.52458e-07" />
+          <joint name="duck3_left_hip_roll" class="chosen_actuator" pos="0 0 0" axis="0 0 1" range="-0.383972 0.383972" />
+          <geom class="visual" pos="0.021 0 -0.0185" quat="0.5 0.5 0.5 0.5" material="seeed_bearing__configuration__22x16x4_material" mesh="seeed_bearing__configuration__22x16x4" />
+          <geom class="visual" pos="-0.0175 0 -0.0185" quat="0.707107 -0.707107 0 0" material="hip_l_material" mesh="hip_l" />
+          <geom class="collision" pos="-0.0175 0 -0.0185" quat="0.707107 -0.707107 0 0" type="mesh" material="hip_l_material" mesh="hip_l" />
+          <body name="duck3_upper_leg_left" pos="0.025 0 -0.0185" quat="0.5 -0.5 0.5 -0.5">
+            <inertial pos="0.006766 0.0228838 0.0134531" quat="0.620818 0.374279 -0.583696 0.365786" mass="0.0482067" diaginertia="1.98453e-05 1.9108e-05 8.11799e-06" />
+            <joint name="duck3_left_hip_pitch" class="chosen_actuator" pos="0 0 0" axis="0 0 1" range="-1.5708 1.5708" />
+            <geom class="visual" pos="0 0 -0.0425" quat="0.5 -0.5 -0.5 -0.5" material="upper_leg_left_material" mesh="upper_leg_left" />
+            <geom class="visual" pos="0.022 0.0357771 0.0125" quat="0 0.707107 0 0.707107" material="xl330_material" mesh="xl330" />
+            <geom class="visual" pos="0 0 -0.0425" quat="0.5 -0.5 -0.5 -0.5" material="upper_leg_rigidity_plate_material" mesh="upper_leg_rigidity_plate" />
+            <geom class="visual" pos="0.022 0.0357771 -0.004" quat="0 0 0 1" material="seeed_bearing__configuration__22x16x4_material" mesh="seeed_bearing__configuration__22x16x4" />
+            <geom class="visual" pos="0 0 0.0125" quat="0.5 0.5 -0.5 0.5" material="xl330_material" mesh="xl330" />
+            <body name="duck3_leg" pos="0.022 0.0357771 -0.004" quat="0 0.707107 0.707107 0">
+              <inertial pos="-1.52e-10 0.0318937 -0.00953505" quat="0.806473 0.591271 0 0" mass="0.0215844" diaginertia="5.25056e-06 4.58054e-06 1.91378e-06" />
+              <joint name="duck3_left_knee" class="chosen_actuator" pos="0 0 0" axis="0 0 1" range="-1.5708 1.5708" />
+              <geom class="visual" pos="-0.022 0.0357771 0.0385" quat="0.5 0.5 0.5 -0.5" material="leg_material" mesh="leg" />
+              <geom class="collision" pos="-0.022 0.0357771 0.0385" quat="0.5 0.5 0.5 -0.5" type="mesh" material="leg_material" mesh="leg" />
+              <geom class="visual" pos="0 0.042 -0.0115" quat="0.5 -0.5 -0.5 -0.5" material="xl330_material" mesh="xl330" />
+              <body name="duck3_ankle_left" pos="0 0.042 -0.026" quat="0 -1 0 0">
+                <inertial pos="-0.00615742 -0.0137483 -0.0156585" quat="0.474723 0.505182 0.517427 0.501696" mass="0.0300246" diaginertia="1.11623e-05 7.7432e-06 5.90334e-06" />
+                <joint name="duck3_left_ankle" class="chosen_actuator" pos="0 0 0" axis="0 0 1" range="-1.5708 1.5708" />
+                <geom class="visual" pos="-0.022 0.00622291 -0.0647" quat="0.5 -0.5 -0.5 -0.5" material="sole_left_material" mesh="sole_left" />
+                <geom name="duck3_left_foot_collision" class="collision" pos="-0.022 0.00622291 -0.0647" quat="0.5 -0.5 -0.5 -0.5" type="mesh" material="sole_left_material" mesh="sole_left" />
+                <geom class="visual" pos="-0.022 0.00622291 -0.0647" quat="0.5 -0.5 -0.5 -0.5" material="foot_left_material" mesh="foot_left" />
+                <geom class="visual" pos="0 0 -0.0322" quat="0 0 0 1" material="seeed_bearing__configuration_default_material" mesh="seeed_bearing__configuration_default" />
+                <geom class="visual" pos="-0.022 0.00622291 -0.0647" quat="0.5 -0.5 -0.5 -0.5" material="ankle_left_material" mesh="ankle_left" />
+                <site name="duck3_left_foot" pos="0 -0.0238146 -0.0140852" quat="0 0 -0.707107 -0.707107" group="3" />
+              </body>
+            </body>
+          </body>
+        </body>
+      </body>
+      <body name="duck3_neck" pos="0.026 0.0145 0.0324215" quat="0 0 0.707107 -0.707107">
+        <inertial pos="0 -0.025 0.0141665" quat="0.707107 0.707107 0 0" mass="0.0368414" diaginertia="1.72925e-05 1.63707e-05 3.12694e-06" />
+        <joint name="duck3_neck_pitch" class="chosen_actuator" pos="0 0 0" axis="0 0 1" range="-1.5708 1.0472" />
+        <geom class="visual" pos="0.022 0.05 0.028" quat="0.5 0.5 0.5 -0.5" material="neck_material" mesh="neck" />
+        <geom class="visual" pos="0 0 0.0145" quat="0.5 -0.5 -0.5 -0.5" material="xl330_material" mesh="xl330" />
+        <geom class="visual" pos="0 -0.05 0.0145" quat="0.5 0.5 -0.5 0.5" material="xl330_material" mesh="xl330" />
+        <geom class="visual" pos="0.022 0.05 0.003" quat="0.5 0.5 0.5 -0.5" material="neck_material" mesh="neck" />
+        <body name="duck3_neck_pitch" pos="0 -0.05 0" quat="0 1 0 0">
+          <inertial pos="-6.533e-09 0.0116641 -0.0145" mass="0.00572" diaginertia="1.09186e-06 9.66855e-07 5.12111e-07" />
+          <joint name="duck3_head_pitch" class="chosen_actuator" pos="0 0 0" axis="0 0 1" range="-1.5708 1.5708" />
+          <geom class="visual" pos="0 0.0287931 -0.0145" quat="0.5 -0.5 -0.5 -0.5" material="neck_pitch_material" mesh="neck_pitch" />
+          <geom class="visual" pos="0 0.0207931 -0.0145" quat="0.707107 0.707107 0 0" material="seeed_bearing__configuration__22x16x4_material" mesh="seeed_bearing__configuration__22x16x4" />
+          <body name="duck3_yaw_roll_motion" pos="0 0.0186931 -0.0145" quat="0 0 -0.707107 -0.707107">
+            <inertial pos="-0.000166657 -0.00500964 0.0178065" quat="0.174483 0.690172 -0.0192577 0.702031" mass="0.0486" diaginertia="9.65512e-06 8.11788e-06 6.8878e-06" />
+            <joint name="duck3_head_yaw" class="chosen_actuator" pos="0 0 0" axis="0 0 1" range="-2.96706 2.96706" />
+            <geom class="visual" pos="0 0 0.01" quat="0.707107 0 0 0.707107" material="yaw_roll_motion_material" mesh="yaw_roll_motion" />
+            <geom class="visual" pos="0 0 0.0145" quat="0.5 -0.5 -0.5 -0.5" material="xl330_material" mesh="xl330" />
+            <geom class="visual" pos="-0.016 0 0.0145" quat="0.707107 0 -0.707107 0" material="seeed_bearing__configuration__22x16x4_material" mesh="seeed_bearing__configuration__22x16x4" />
+            <geom class="visual" pos="0.018 0 0.0145" quat="0.707107 0 -0.707107 0" material="seeed_bearing__configuration__22x16x4_material" mesh="seeed_bearing__configuration__22x16x4" />
+            <body name="duck3_jaw_soft" pos="-0.0179 0 0.0145" quat="0.707107 0 -0.707107 0">
+              <inertial pos="0.00460523 0.00120047 -0.0324761" quat="0.999608 0.0201488 -0.0191644 -0.00313932" mass="0.188766" diaginertia="0.000321067 0.000254266 0.000149461" />
+              <joint name="duck3_head_roll" class="chosen_actuator" pos="0 0 0" axis="0 0 1" range="-0.436332 0.436332" />
+              <geom class="visual" pos="0.0155 -9.13778e-05 -0.05548" quat="0.5 -0.5 0.5 -0.5" material="lens_material" mesh="lens" />
+              <geom class="visual" pos="-0.0045 -9.13778e-05 -0.0178" quat="0.5 0.5 0.5 0.5" material="face_part_material" mesh="face_part" />
+              <geom class="visual" pos="0.003 0.0255 -0.018" quat="0.707107 0 0 -0.707107" material="xl330_material" mesh="xl330" />
+              <geom class="visual" pos="-0.0046 0 -0.0179996" quat="0.5 0.5 0.5 0.5" material="jaw_soft_material" mesh="jaw_soft" />
+              <geom class="visual" pos="-0.0045 0 -0.018" quat="0.5 0.5 0.5 0.5" material="motor_support_material" mesh="motor_support" />
+              <geom class="visual" pos="-0.0045 0 -0.018" quat="0.5 0.5 0.5 0.5" material="top_head_shell_material" mesh="top_head_shell" />
+              <geom class="collision" pos="-0.0045 0 -0.018" quat="0.5 0.5 0.5 0.5" type="mesh" material="top_head_shell_material" mesh="top_head_shell" />
+              <geom class="visual" pos="0 0 0.0145" quat="0.5 -0.5 -0.5 -0.5" material="xl330_material" mesh="xl330" />
+              <geom class="visual" pos="0.0032 -0.04 -0.018" quat="0.5 -0.5 0.5 0.5" material="seeed_bearing__configuration_default_material" mesh="seeed_bearing__configuration_default" />
+              <geom class="visual" pos="0.02694 0.0289936 -0.0519" quat="0.707107 0 0 -0.707107" material="elec_rpi_robot_hat_pcb_material" mesh="elec_rpi_robot_hat_pcb" />
+              <geom class="visual" pos="-0.00420071 1.7776e-08 -0.0180814" quat="0.5 0.5 0.5 0.5" material="soft_mouth_top_material" mesh="soft_mouth_top" />
+              <geom class="visual" pos="-0.0045 -9.13778e-05 -0.0178" quat="0.5 0.5 0.5 0.5" material="noenoeil_material" mesh="noenoeil" />
+              <geom class="visual" pos="-0.0045 0 -0.018" quat="0.5 0.5 0.5 0.5" material="jaw_material" mesh="jaw" />
+              <geom class="collision" pos="-0.0045 0 -0.018" quat="0.5 0.5 0.5 0.5" type="mesh" material="jaw_material" mesh="jaw" />
+              <geom class="visual" pos="-0.0043 0 -0.018" quat="0.5 0.5 0.5 0.5" material="bottom_head_shell_material" mesh="bottom_head_shell" />
+              <geom class="collision" pos="-0.0043 0 -0.018" quat="0.5 0.5 0.5 0.5" type="mesh" material="bottom_head_shell_material" mesh="bottom_head_shell" />
+              <geom class="visual" pos="0.0155 -9.13778e-05 -0.05558" quat="0.5 -0.5 0.5 -0.5" material="m12_lens_holder_material" mesh="m12_lens_holder" />
+              <geom class="visual" pos="0.015435 -1.13778e-05 -0.06001" quat="0.5 -0.5 -0.5 0.5" material="pcb__raspberry_pi_zero_2_w_material" mesh="pcb__raspberry_pi_zero_2_w" />
+              <geom class="visual" pos="0.01 -0.016786 0.0260226" quat="0.5 0.5 0.5 0.5" material="speaker_material" mesh="speaker" />
+              <site name="duck3_head_camera" pos="0.0155 -9.13778e-05 -0.0733" quat="0.707107 0 0.707107 0" group="3" />
+              <site name="duck3_tof" pos="0.0135 0.0224086 -0.0733" quat="0.707107 0 0.707107 0" group="3" />
+              <site name="duck3_head_imu" pos="0.0152323 0.000111069 -0.05106" group="3" />
+              <site name="duck3_mouth_tip" pos="-0.00809334 0 -0.0777383" quat="0.704015 0 0.710185 0" group="3" />
+              <camera name="duck3_head_camera" pos="0.0155 -9.13778e-05 -0.0733" quat="0 0 -1 0" />
+            </body>
+          </body>
+        </body>
+      </body>
+      <body name="duck3_bearing_roll" pos="0.006 -0.0175 -0.005" quat="0 -0.707107 -0.707107 0">
+        <inertial pos="-8.8e-11 0.00099414 0.0168917" quat="0.99973 -0.0232487 0 0" mass="0.0230406" diaginertia="4.1964e-06 3.41989e-06 2.32413e-06" />
+        <joint name="duck3_right_hip_yaw" class="chosen_actuator" pos="0 0 0" axis="0 0 1" range="-0.523599 0.436332" />
+        <geom class="visual" pos="-0.0175 -0.002 0.0125" quat="0 1 0 0" material="yaw2roll_material" mesh="yaw2roll" />
+        <geom class="visual" pos="0 0 0.0125" quat="0 -0.707107 0.707107 0" material="xl330_material" mesh="xl330" />
+        <geom class="visual" pos="-0.0175 -0.002 0.0125" quat="0 1 0 0" material="bearing_roll_material" mesh="bearing_roll" />
+        <geom class="visual" pos="0 0.0165 0.0125" quat="0.5 0.5 0.5 -0.5" material="seeed_bearing__configuration__22x16x4_material" mesh="seeed_bearing__configuration__22x16x4" />
+        <body name="duck3_hip_l_2" pos="0 0.0165 0.0125" quat="0 0 0.707107 0.707107">
+          <inertial pos="0.014815 1.6212e-08 -0.00829992" quat="0.94694 -8.2459e-07 -0.321411 -2.79883e-07" mass="0.00618934" diaginertia="1.15976e-06 1.15753e-06 3.52458e-07" />
+          <joint name="duck3_right_hip_roll" class="chosen_actuator" pos="0 0 0" axis="0 0 1" range="-0.383972 0.383972" />
+          <geom class="visual" pos="-0.0175 0 -0.0185" quat="0.707107 -0.707107 0 0" material="hip_l_material" mesh="hip_l" />
+          <geom class="collision" pos="-0.0175 0 -0.0185" quat="0.707107 -0.707107 0 0" type="mesh" material="hip_l_material" mesh="hip_l" />
+          <geom class="visual" pos="0.025 0 -0.0185" quat="0.5 0.5 -0.5 -0.5" material="seeed_bearing__configuration__22x16x4_material" mesh="seeed_bearing__configuration__22x16x4" />
+          <body name="duck3_upper_leg_right" pos="0.025 0 -0.0185" quat="0.5 -0.5 0.5 -0.5">
+            <inertial pos="-0.006766 0.0228838 0.0134531" quat="0.365786 0.583696 -0.374279 0.620818" mass="0.0482067" diaginertia="1.98453e-05 1.9108e-05 8.11799e-06" />
+            <joint name="duck3_right_hip_pitch" class="chosen_actuator" pos="0 0 0" axis="0 0 1" range="-1.5708 1.5708" />
+            <geom class="visual" pos="-0.022 0.0357771 0.0125" quat="0.707107 0 -0.707107 0" material="xl330_material" mesh="xl330" />
+            <geom class="visual" pos="-0.022 0.0357771 0" quat="0 1 0 0" material="seeed_bearing__configuration__22x16x4_material" mesh="seeed_bearing__configuration__22x16x4" />
+            <geom class="visual" pos="0 0 0.0435" quat="0.5 -0.5 0.5 0.5" material="upper_leg_rigidity_plate_material" mesh="upper_leg_rigidity_plate" />
+            <geom class="visual" pos="0 0 -0.0425" quat="0.5 -0.5 0.5 0.5" material="upper_leg_right_material" mesh="upper_leg_right" />
+            <geom class="visual" pos="0 0 0.0125" quat="0.5 0.5 -0.5 0.5" material="xl330_material" mesh="xl330" />
+            <body name="duck3_leg_2" pos="-0.022 0.0357771 -0.004" quat="0 1 0 0">
+              <inertial pos="-0.0318937 -1.52e-10 -0.00953505" quat="0.570263 0.418091 0.418091 0.570263" mass="0.0215844" diaginertia="5.25056e-06 4.58054e-06 1.91378e-06" />
+              <joint name="duck3_right_knee" class="chosen_actuator" pos="0 0 0" axis="0 0 1" range="-1.5708 1.5708" />
+              <geom class="visual" pos="-0.042 0 -0.0115" quat="0.707107 0 -0.707107 0" material="xl330_material" mesh="xl330" />
+              <geom class="visual" pos="-0.0357771 -0.022 0.0385" quat="0.707107 0 0.707107 0" material="leg_material" mesh="leg" />
+              <geom class="collision" pos="-0.0357771 -0.022 0.0385" quat="0.707107 0 0.707107 0" type="mesh" material="leg_material" mesh="leg" />
+              <body name="duck3_ankle_right" pos="-0.042 0 -0.026" quat="0 -0.707107 -0.707107 0">
+                <inertial pos="0.00615539 -0.0137482 -0.0156566" quat="0.517424 0.501653 0.474682 0.505266" mass="0.0300251" diaginertia="1.11622e-05 7.74321e-06 5.90344e-06" />
+                <joint name="duck3_right_ankle" class="chosen_actuator" pos="0 0 0" axis="0 0 1" range="-1.5708 1.5708" />
+                <geom class="visual" pos="0.022 0.00622291 -0.0647" quat="0.5 -0.5 0.5 0.5" material="ankle_right_material" mesh="ankle_right" />
+                <geom class="visual" pos="0.022 0.00622291 -0.0647" quat="0.5 -0.5 0.5 0.5" material="sole_right_material" mesh="sole_right" />
+                <geom name="duck3_right_foot_collision" class="collision" pos="0.022 0.00622291 -0.0647" quat="0.5 -0.5 0.5 0.5" type="mesh" material="sole_right_material" mesh="sole_right" />
+                <geom class="visual" pos="0 0 -0.0292" quat="0 -1 0 0" material="seeed_bearing__configuration_default_material" mesh="seeed_bearing__configuration_default" />
+                <geom class="visual" pos="0.022 0.00622291 -0.0647" quat="0.5 -0.5 0.5 0.5" material="foot_right_material" mesh="foot_right" />
+                <site name="duck3_right_foot" pos="0 -0.0238146 -0.0140852" quat="0.707107 -0.707107 0 0" group="3" />
+              </body>
+            </body>
+          </body>
+        </body>
+      </body>
+    </body>
+    <body name="duck4_trunk_base" childclass="microduck" pos="0.0000 0.7500 0.12">
+      <inertial pos="-0.0226332 -2.70828e-05 0.00280064" quat="0.664866 0.238381 0.235012 0.667756" mass="0.199224" diaginertia="0.000145932 0.000140799 9.85265e-05" />
+      <joint name="duck4_trunk_base_freejoint" type="free" armature="0" frictionloss="0" />
+      <geom class="visual" pos="0.006 0.0175 -0.005" quat="1 0 0 0" material="seeed_bearing__configuration__22x16x4_material" mesh="seeed_bearing__configuration__22x16x4" />
+      <geom class="visual" pos="0.004 -0.0005 -0.0175" quat="0.707107 0 0 0.707107" material="right_shell_material" mesh="right_shell" />
+      <geom class="visual" pos="0.0042 0 -0.0175215" quat="0.707107 0 0 0.707107" material="banana_pcb_locker_material" mesh="banana_pcb_locker" />
+      <geom class="visual" pos="0.004 0 -0.0175" quat="0.707107 0 0 0.707107" material="trunk_base_material" mesh="trunk_base" />
+      <geom class="visual" pos="0.006 0.0175 0.0115" quat="0 -0.707107 0 -0.707107" material="xl330_material" mesh="xl330" />
+      <geom class="visual" pos="0.004 0 -0.0175215" quat="0.707107 0 0 0.707107" material="power_support_material" mesh="power_support" />
+      <geom class="self_collision_only" pos="0.004 0 -0.0175215" quat="0.707107 0 0 0.707107" type="mesh" material="power_support_material" mesh="power_support" />
+      <geom class="visual" pos="-0.0359693 0 -0.00385049" quat="0.00617059 0.70708 -0.70708 -0.00617059" material="np_f970_material" mesh="np_f970" />
+      <geom class="collision" pos="-0.0359693 0 -0.00385049" quat="0.00617059 0.70708 -0.70708 -0.00617059" type="mesh" material="np_f970_material" mesh="np_f970" />
+      <geom class="visual" pos="0.006 -0.0175 0.0115" quat="0 -0.707107 0 -0.707107" material="xl330_material" mesh="xl330" />
+      <geom class="visual" pos="0.004 0 -0.0175785" quat="0.707107 0 0 0.707107" material="left_shell_material" mesh="left_shell" />
+      <geom class="visual" pos="0.006 -0.0175 -0.005" quat="1 0 0 0" material="seeed_bearing__configuration__22x16x4_material" mesh="seeed_bearing__configuration__22x16x4" />
+      <site name="duck4_imu" pos="-0.021 6.64098e-05 -0.0146984" group="3" />
+      <body name="duck4_yaw2roll" pos="0.006 0.0175 -0.005" quat="0 -0.707107 -0.707107 0">
+        <inertial pos="-8.8e-11 0.00099414 0.0168917" quat="0.99973 -0.0232487 0 0" mass="0.0230406" diaginertia="4.1964e-06 3.41989e-06 2.32413e-06" />
+        <joint name="duck4_left_hip_yaw" class="chosen_actuator" pos="0 0 0" axis="0 0 1" range="-0.436332 0.523599" />
+        <geom class="visual" pos="-0.0175 -0.002 0.0125" quat="0 1 0 0" material="yaw2roll_material" mesh="yaw2roll" />
+        <geom class="visual" pos="0 0 0.0125" quat="0 -0.707107 0.707107 0" material="xl330_material" mesh="xl330" />
+        <geom class="visual" pos="0 0.0165 0.0125" quat="0.5 0.5 0.5 -0.5" material="seeed_bearing__configuration__22x16x4_material" mesh="seeed_bearing__configuration__22x16x4" />
+        <geom class="visual" pos="-0.0175 -0.002 0.0125" quat="0 -1 0 0" material="bearing_roll_material" mesh="bearing_roll" />
+        <body name="duck4_hip_l" pos="0 0.0165 0.0125" quat="0.707107 -0.707107 0 0">
+          <inertial pos="0.014815 1.6179e-08 -0.00829992" quat="0.94694 -8.2459e-07 -0.321411 -2.79883e-07" mass="0.00618934" diaginertia="1.15976e-06 1.15753e-06 3.52458e-07" />
+          <joint name="duck4_left_hip_roll" class="chosen_actuator" pos="0 0 0" axis="0 0 1" range="-0.383972 0.383972" />
+          <geom class="visual" pos="0.021 0 -0.0185" quat="0.5 0.5 0.5 0.5" material="seeed_bearing__configuration__22x16x4_material" mesh="seeed_bearing__configuration__22x16x4" />
+          <geom class="visual" pos="-0.0175 0 -0.0185" quat="0.707107 -0.707107 0 0" material="hip_l_material" mesh="hip_l" />
+          <geom class="collision" pos="-0.0175 0 -0.0185" quat="0.707107 -0.707107 0 0" type="mesh" material="hip_l_material" mesh="hip_l" />
+          <body name="duck4_upper_leg_left" pos="0.025 0 -0.0185" quat="0.5 -0.5 0.5 -0.5">
+            <inertial pos="0.006766 0.0228838 0.0134531" quat="0.620818 0.374279 -0.583696 0.365786" mass="0.0482067" diaginertia="1.98453e-05 1.9108e-05 8.11799e-06" />
+            <joint name="duck4_left_hip_pitch" class="chosen_actuator" pos="0 0 0" axis="0 0 1" range="-1.5708 1.5708" />
+            <geom class="visual" pos="0 0 -0.0425" quat="0.5 -0.5 -0.5 -0.5" material="upper_leg_left_material" mesh="upper_leg_left" />
+            <geom class="visual" pos="0.022 0.0357771 0.0125" quat="0 0.707107 0 0.707107" material="xl330_material" mesh="xl330" />
+            <geom class="visual" pos="0 0 -0.0425" quat="0.5 -0.5 -0.5 -0.5" material="upper_leg_rigidity_plate_material" mesh="upper_leg_rigidity_plate" />
+            <geom class="visual" pos="0.022 0.0357771 -0.004" quat="0 0 0 1" material="seeed_bearing__configuration__22x16x4_material" mesh="seeed_bearing__configuration__22x16x4" />
+            <geom class="visual" pos="0 0 0.0125" quat="0.5 0.5 -0.5 0.5" material="xl330_material" mesh="xl330" />
+            <body name="duck4_leg" pos="0.022 0.0357771 -0.004" quat="0 0.707107 0.707107 0">
+              <inertial pos="-1.52e-10 0.0318937 -0.00953505" quat="0.806473 0.591271 0 0" mass="0.0215844" diaginertia="5.25056e-06 4.58054e-06 1.91378e-06" />
+              <joint name="duck4_left_knee" class="chosen_actuator" pos="0 0 0" axis="0 0 1" range="-1.5708 1.5708" />
+              <geom class="visual" pos="-0.022 0.0357771 0.0385" quat="0.5 0.5 0.5 -0.5" material="leg_material" mesh="leg" />
+              <geom class="collision" pos="-0.022 0.0357771 0.0385" quat="0.5 0.5 0.5 -0.5" type="mesh" material="leg_material" mesh="leg" />
+              <geom class="visual" pos="0 0.042 -0.0115" quat="0.5 -0.5 -0.5 -0.5" material="xl330_material" mesh="xl330" />
+              <body name="duck4_ankle_left" pos="0 0.042 -0.026" quat="0 -1 0 0">
+                <inertial pos="-0.00615742 -0.0137483 -0.0156585" quat="0.474723 0.505182 0.517427 0.501696" mass="0.0300246" diaginertia="1.11623e-05 7.7432e-06 5.90334e-06" />
+                <joint name="duck4_left_ankle" class="chosen_actuator" pos="0 0 0" axis="0 0 1" range="-1.5708 1.5708" />
+                <geom class="visual" pos="-0.022 0.00622291 -0.0647" quat="0.5 -0.5 -0.5 -0.5" material="sole_left_material" mesh="sole_left" />
+                <geom name="duck4_left_foot_collision" class="collision" pos="-0.022 0.00622291 -0.0647" quat="0.5 -0.5 -0.5 -0.5" type="mesh" material="sole_left_material" mesh="sole_left" />
+                <geom class="visual" pos="-0.022 0.00622291 -0.0647" quat="0.5 -0.5 -0.5 -0.5" material="foot_left_material" mesh="foot_left" />
+                <geom class="visual" pos="0 0 -0.0322" quat="0 0 0 1" material="seeed_bearing__configuration_default_material" mesh="seeed_bearing__configuration_default" />
+                <geom class="visual" pos="-0.022 0.00622291 -0.0647" quat="0.5 -0.5 -0.5 -0.5" material="ankle_left_material" mesh="ankle_left" />
+                <site name="duck4_left_foot" pos="0 -0.0238146 -0.0140852" quat="0 0 -0.707107 -0.707107" group="3" />
+              </body>
+            </body>
+          </body>
+        </body>
+      </body>
+      <body name="duck4_neck" pos="0.026 0.0145 0.0324215" quat="0 0 0.707107 -0.707107">
+        <inertial pos="0 -0.025 0.0141665" quat="0.707107 0.707107 0 0" mass="0.0368414" diaginertia="1.72925e-05 1.63707e-05 3.12694e-06" />
+        <joint name="duck4_neck_pitch" class="chosen_actuator" pos="0 0 0" axis="0 0 1" range="-1.5708 1.0472" />
+        <geom class="visual" pos="0.022 0.05 0.028" quat="0.5 0.5 0.5 -0.5" material="neck_material" mesh="neck" />
+        <geom class="visual" pos="0 0 0.0145" quat="0.5 -0.5 -0.5 -0.5" material="xl330_material" mesh="xl330" />
+        <geom class="visual" pos="0 -0.05 0.0145" quat="0.5 0.5 -0.5 0.5" material="xl330_material" mesh="xl330" />
+        <geom class="visual" pos="0.022 0.05 0.003" quat="0.5 0.5 0.5 -0.5" material="neck_material" mesh="neck" />
+        <body name="duck4_neck_pitch" pos="0 -0.05 0" quat="0 1 0 0">
+          <inertial pos="-6.533e-09 0.0116641 -0.0145" mass="0.00572" diaginertia="1.09186e-06 9.66855e-07 5.12111e-07" />
+          <joint name="duck4_head_pitch" class="chosen_actuator" pos="0 0 0" axis="0 0 1" range="-1.5708 1.5708" />
+          <geom class="visual" pos="0 0.0287931 -0.0145" quat="0.5 -0.5 -0.5 -0.5" material="neck_pitch_material" mesh="neck_pitch" />
+          <geom class="visual" pos="0 0.0207931 -0.0145" quat="0.707107 0.707107 0 0" material="seeed_bearing__configuration__22x16x4_material" mesh="seeed_bearing__configuration__22x16x4" />
+          <body name="duck4_yaw_roll_motion" pos="0 0.0186931 -0.0145" quat="0 0 -0.707107 -0.707107">
+            <inertial pos="-0.000166657 -0.00500964 0.0178065" quat="0.174483 0.690172 -0.0192577 0.702031" mass="0.0486" diaginertia="9.65512e-06 8.11788e-06 6.8878e-06" />
+            <joint name="duck4_head_yaw" class="chosen_actuator" pos="0 0 0" axis="0 0 1" range="-2.96706 2.96706" />
+            <geom class="visual" pos="0 0 0.01" quat="0.707107 0 0 0.707107" material="yaw_roll_motion_material" mesh="yaw_roll_motion" />
+            <geom class="visual" pos="0 0 0.0145" quat="0.5 -0.5 -0.5 -0.5" material="xl330_material" mesh="xl330" />
+            <geom class="visual" pos="-0.016 0 0.0145" quat="0.707107 0 -0.707107 0" material="seeed_bearing__configuration__22x16x4_material" mesh="seeed_bearing__configuration__22x16x4" />
+            <geom class="visual" pos="0.018 0 0.0145" quat="0.707107 0 -0.707107 0" material="seeed_bearing__configuration__22x16x4_material" mesh="seeed_bearing__configuration__22x16x4" />
+            <body name="duck4_jaw_soft" pos="-0.0179 0 0.0145" quat="0.707107 0 -0.707107 0">
+              <inertial pos="0.00460523 0.00120047 -0.0324761" quat="0.999608 0.0201488 -0.0191644 -0.00313932" mass="0.188766" diaginertia="0.000321067 0.000254266 0.000149461" />
+              <joint name="duck4_head_roll" class="chosen_actuator" pos="0 0 0" axis="0 0 1" range="-0.436332 0.436332" />
+              <geom class="visual" pos="0.0155 -9.13778e-05 -0.05548" quat="0.5 -0.5 0.5 -0.5" material="lens_material" mesh="lens" />
+              <geom class="visual" pos="-0.0045 -9.13778e-05 -0.0178" quat="0.5 0.5 0.5 0.5" material="face_part_material" mesh="face_part" />
+              <geom class="visual" pos="0.003 0.0255 -0.018" quat="0.707107 0 0 -0.707107" material="xl330_material" mesh="xl330" />
+              <geom class="visual" pos="-0.0046 0 -0.0179996" quat="0.5 0.5 0.5 0.5" material="jaw_soft_material" mesh="jaw_soft" />
+              <geom class="visual" pos="-0.0045 0 -0.018" quat="0.5 0.5 0.5 0.5" material="motor_support_material" mesh="motor_support" />
+              <geom class="visual" pos="-0.0045 0 -0.018" quat="0.5 0.5 0.5 0.5" material="top_head_shell_material" mesh="top_head_shell" />
+              <geom class="collision" pos="-0.0045 0 -0.018" quat="0.5 0.5 0.5 0.5" type="mesh" material="top_head_shell_material" mesh="top_head_shell" />
+              <geom class="visual" pos="0 0 0.0145" quat="0.5 -0.5 -0.5 -0.5" material="xl330_material" mesh="xl330" />
+              <geom class="visual" pos="0.0032 -0.04 -0.018" quat="0.5 -0.5 0.5 0.5" material="seeed_bearing__configuration_default_material" mesh="seeed_bearing__configuration_default" />
+              <geom class="visual" pos="0.02694 0.0289936 -0.0519" quat="0.707107 0 0 -0.707107" material="elec_rpi_robot_hat_pcb_material" mesh="elec_rpi_robot_hat_pcb" />
+              <geom class="visual" pos="-0.00420071 1.7776e-08 -0.0180814" quat="0.5 0.5 0.5 0.5" material="soft_mouth_top_material" mesh="soft_mouth_top" />
+              <geom class="visual" pos="-0.0045 -9.13778e-05 -0.0178" quat="0.5 0.5 0.5 0.5" material="noenoeil_material" mesh="noenoeil" />
+              <geom class="visual" pos="-0.0045 0 -0.018" quat="0.5 0.5 0.5 0.5" material="jaw_material" mesh="jaw" />
+              <geom class="collision" pos="-0.0045 0 -0.018" quat="0.5 0.5 0.5 0.5" type="mesh" material="jaw_material" mesh="jaw" />
+              <geom class="visual" pos="-0.0043 0 -0.018" quat="0.5 0.5 0.5 0.5" material="bottom_head_shell_material" mesh="bottom_head_shell" />
+              <geom class="collision" pos="-0.0043 0 -0.018" quat="0.5 0.5 0.5 0.5" type="mesh" material="bottom_head_shell_material" mesh="bottom_head_shell" />
+              <geom class="visual" pos="0.0155 -9.13778e-05 -0.05558" quat="0.5 -0.5 0.5 -0.5" material="m12_lens_holder_material" mesh="m12_lens_holder" />
+              <geom class="visual" pos="0.015435 -1.13778e-05 -0.06001" quat="0.5 -0.5 -0.5 0.5" material="pcb__raspberry_pi_zero_2_w_material" mesh="pcb__raspberry_pi_zero_2_w" />
+              <geom class="visual" pos="0.01 -0.016786 0.0260226" quat="0.5 0.5 0.5 0.5" material="speaker_material" mesh="speaker" />
+              <site name="duck4_head_camera" pos="0.0155 -9.13778e-05 -0.0733" quat="0.707107 0 0.707107 0" group="3" />
+              <site name="duck4_tof" pos="0.0135 0.0224086 -0.0733" quat="0.707107 0 0.707107 0" group="3" />
+              <site name="duck4_head_imu" pos="0.0152323 0.000111069 -0.05106" group="3" />
+              <site name="duck4_mouth_tip" pos="-0.00809334 0 -0.0777383" quat="0.704015 0 0.710185 0" group="3" />
+              <camera name="duck4_head_camera" pos="0.0155 -9.13778e-05 -0.0733" quat="0 0 -1 0" />
+            </body>
+          </body>
+        </body>
+      </body>
+      <body name="duck4_bearing_roll" pos="0.006 -0.0175 -0.005" quat="0 -0.707107 -0.707107 0">
+        <inertial pos="-8.8e-11 0.00099414 0.0168917" quat="0.99973 -0.0232487 0 0" mass="0.0230406" diaginertia="4.1964e-06 3.41989e-06 2.32413e-06" />
+        <joint name="duck4_right_hip_yaw" class="chosen_actuator" pos="0 0 0" axis="0 0 1" range="-0.523599 0.436332" />
+        <geom class="visual" pos="-0.0175 -0.002 0.0125" quat="0 1 0 0" material="yaw2roll_material" mesh="yaw2roll" />
+        <geom class="visual" pos="0 0 0.0125" quat="0 -0.707107 0.707107 0" material="xl330_material" mesh="xl330" />
+        <geom class="visual" pos="-0.0175 -0.002 0.0125" quat="0 1 0 0" material="bearing_roll_material" mesh="bearing_roll" />
+        <geom class="visual" pos="0 0.0165 0.0125" quat="0.5 0.5 0.5 -0.5" material="seeed_bearing__configuration__22x16x4_material" mesh="seeed_bearing__configuration__22x16x4" />
+        <body name="duck4_hip_l_2" pos="0 0.0165 0.0125" quat="0 0 0.707107 0.707107">
+          <inertial pos="0.014815 1.6212e-08 -0.00829992" quat="0.94694 -8.2459e-07 -0.321411 -2.79883e-07" mass="0.00618934" diaginertia="1.15976e-06 1.15753e-06 3.52458e-07" />
+          <joint name="duck4_right_hip_roll" class="chosen_actuator" pos="0 0 0" axis="0 0 1" range="-0.383972 0.383972" />
+          <geom class="visual" pos="-0.0175 0 -0.0185" quat="0.707107 -0.707107 0 0" material="hip_l_material" mesh="hip_l" />
+          <geom class="collision" pos="-0.0175 0 -0.0185" quat="0.707107 -0.707107 0 0" type="mesh" material="hip_l_material" mesh="hip_l" />
+          <geom class="visual" pos="0.025 0 -0.0185" quat="0.5 0.5 -0.5 -0.5" material="seeed_bearing__configuration__22x16x4_material" mesh="seeed_bearing__configuration__22x16x4" />
+          <body name="duck4_upper_leg_right" pos="0.025 0 -0.0185" quat="0.5 -0.5 0.5 -0.5">
+            <inertial pos="-0.006766 0.0228838 0.0134531" quat="0.365786 0.583696 -0.374279 0.620818" mass="0.0482067" diaginertia="1.98453e-05 1.9108e-05 8.11799e-06" />
+            <joint name="duck4_right_hip_pitch" class="chosen_actuator" pos="0 0 0" axis="0 0 1" range="-1.5708 1.5708" />
+            <geom class="visual" pos="-0.022 0.0357771 0.0125" quat="0.707107 0 -0.707107 0" material="xl330_material" mesh="xl330" />
+            <geom class="visual" pos="-0.022 0.0357771 0" quat="0 1 0 0" material="seeed_bearing__configuration__22x16x4_material" mesh="seeed_bearing__configuration__22x16x4" />
+            <geom class="visual" pos="0 0 0.0435" quat="0.5 -0.5 0.5 0.5" material="upper_leg_rigidity_plate_material" mesh="upper_leg_rigidity_plate" />
+            <geom class="visual" pos="0 0 -0.0425" quat="0.5 -0.5 0.5 0.5" material="upper_leg_right_material" mesh="upper_leg_right" />
+            <geom class="visual" pos="0 0 0.0125" quat="0.5 0.5 -0.5 0.5" material="xl330_material" mesh="xl330" />
+            <body name="duck4_leg_2" pos="-0.022 0.0357771 -0.004" quat="0 1 0 0">
+              <inertial pos="-0.0318937 -1.52e-10 -0.00953505" quat="0.570263 0.418091 0.418091 0.570263" mass="0.0215844" diaginertia="5.25056e-06 4.58054e-06 1.91378e-06" />
+              <joint name="duck4_right_knee" class="chosen_actuator" pos="0 0 0" axis="0 0 1" range="-1.5708 1.5708" />
+              <geom class="visual" pos="-0.042 0 -0.0115" quat="0.707107 0 -0.707107 0" material="xl330_material" mesh="xl330" />
+              <geom class="visual" pos="-0.0357771 -0.022 0.0385" quat="0.707107 0 0.707107 0" material="leg_material" mesh="leg" />
+              <geom class="collision" pos="-0.0357771 -0.022 0.0385" quat="0.707107 0 0.707107 0" type="mesh" material="leg_material" mesh="leg" />
+              <body name="duck4_ankle_right" pos="-0.042 0 -0.026" quat="0 -0.707107 -0.707107 0">
+                <inertial pos="0.00615539 -0.0137482 -0.0156566" quat="0.517424 0.501653 0.474682 0.505266" mass="0.0300251" diaginertia="1.11622e-05 7.74321e-06 5.90344e-06" />
+                <joint name="duck4_right_ankle" class="chosen_actuator" pos="0 0 0" axis="0 0 1" range="-1.5708 1.5708" />
+                <geom class="visual" pos="0.022 0.00622291 -0.0647" quat="0.5 -0.5 0.5 0.5" material="ankle_right_material" mesh="ankle_right" />
+                <geom class="visual" pos="0.022 0.00622291 -0.0647" quat="0.5 -0.5 0.5 0.5" material="sole_right_material" mesh="sole_right" />
+                <geom name="duck4_right_foot_collision" class="collision" pos="0.022 0.00622291 -0.0647" quat="0.5 -0.5 0.5 0.5" type="mesh" material="sole_right_material" mesh="sole_right" />
+                <geom class="visual" pos="0 0 -0.0292" quat="0 -1 0 0" material="seeed_bearing__configuration_default_material" mesh="seeed_bearing__configuration_default" />
+                <geom class="visual" pos="0.022 0.00622291 -0.0647" quat="0.5 -0.5 0.5 0.5" material="foot_right_material" mesh="foot_right" />
+                <site name="duck4_right_foot" pos="0 -0.0238146 -0.0140852" quat="0.707107 -0.707107 0 0" group="3" />
+              </body>
+            </body>
+          </body>
+        </body>
+      </body>
+    </body>
+    <body name="duck5_trunk_base" childclass="microduck" pos="0.0000 1.2500 0.12">
+      <inertial pos="-0.0226332 -2.70828e-05 0.00280064" quat="0.664866 0.238381 0.235012 0.667756" mass="0.199224" diaginertia="0.000145932 0.000140799 9.85265e-05" />
+      <joint name="duck5_trunk_base_freejoint" type="free" armature="0" frictionloss="0" />
+      <geom class="visual" pos="0.006 0.0175 -0.005" quat="1 0 0 0" material="seeed_bearing__configuration__22x16x4_material" mesh="seeed_bearing__configuration__22x16x4" />
+      <geom class="visual" pos="0.004 -0.0005 -0.0175" quat="0.707107 0 0 0.707107" material="right_shell_material" mesh="right_shell" />
+      <geom class="visual" pos="0.0042 0 -0.0175215" quat="0.707107 0 0 0.707107" material="banana_pcb_locker_material" mesh="banana_pcb_locker" />
+      <geom class="visual" pos="0.004 0 -0.0175" quat="0.707107 0 0 0.707107" material="trunk_base_material" mesh="trunk_base" />
+      <geom class="visual" pos="0.006 0.0175 0.0115" quat="0 -0.707107 0 -0.707107" material="xl330_material" mesh="xl330" />
+      <geom class="visual" pos="0.004 0 -0.0175215" quat="0.707107 0 0 0.707107" material="power_support_material" mesh="power_support" />
+      <geom class="self_collision_only" pos="0.004 0 -0.0175215" quat="0.707107 0 0 0.707107" type="mesh" material="power_support_material" mesh="power_support" />
+      <geom class="visual" pos="-0.0359693 0 -0.00385049" quat="0.00617059 0.70708 -0.70708 -0.00617059" material="np_f970_material" mesh="np_f970" />
+      <geom class="collision" pos="-0.0359693 0 -0.00385049" quat="0.00617059 0.70708 -0.70708 -0.00617059" type="mesh" material="np_f970_material" mesh="np_f970" />
+      <geom class="visual" pos="0.006 -0.0175 0.0115" quat="0 -0.707107 0 -0.707107" material="xl330_material" mesh="xl330" />
+      <geom class="visual" pos="0.004 0 -0.0175785" quat="0.707107 0 0 0.707107" material="left_shell_material" mesh="left_shell" />
+      <geom class="visual" pos="0.006 -0.0175 -0.005" quat="1 0 0 0" material="seeed_bearing__configuration__22x16x4_material" mesh="seeed_bearing__configuration__22x16x4" />
+      <site name="duck5_imu" pos="-0.021 6.64098e-05 -0.0146984" group="3" />
+      <body name="duck5_yaw2roll" pos="0.006 0.0175 -0.005" quat="0 -0.707107 -0.707107 0">
+        <inertial pos="-8.8e-11 0.00099414 0.0168917" quat="0.99973 -0.0232487 0 0" mass="0.0230406" diaginertia="4.1964e-06 3.41989e-06 2.32413e-06" />
+        <joint name="duck5_left_hip_yaw" class="chosen_actuator" pos="0 0 0" axis="0 0 1" range="-0.436332 0.523599" />
+        <geom class="visual" pos="-0.0175 -0.002 0.0125" quat="0 1 0 0" material="yaw2roll_material" mesh="yaw2roll" />
+        <geom class="visual" pos="0 0 0.0125" quat="0 -0.707107 0.707107 0" material="xl330_material" mesh="xl330" />
+        <geom class="visual" pos="0 0.0165 0.0125" quat="0.5 0.5 0.5 -0.5" material="seeed_bearing__configuration__22x16x4_material" mesh="seeed_bearing__configuration__22x16x4" />
+        <geom class="visual" pos="-0.0175 -0.002 0.0125" quat="0 -1 0 0" material="bearing_roll_material" mesh="bearing_roll" />
+        <body name="duck5_hip_l" pos="0 0.0165 0.0125" quat="0.707107 -0.707107 0 0">
+          <inertial pos="0.014815 1.6179e-08 -0.00829992" quat="0.94694 -8.2459e-07 -0.321411 -2.79883e-07" mass="0.00618934" diaginertia="1.15976e-06 1.15753e-06 3.52458e-07" />
+          <joint name="duck5_left_hip_roll" class="chosen_actuator" pos="0 0 0" axis="0 0 1" range="-0.383972 0.383972" />
+          <geom class="visual" pos="0.021 0 -0.0185" quat="0.5 0.5 0.5 0.5" material="seeed_bearing__configuration__22x16x4_material" mesh="seeed_bearing__configuration__22x16x4" />
+          <geom class="visual" pos="-0.0175 0 -0.0185" quat="0.707107 -0.707107 0 0" material="hip_l_material" mesh="hip_l" />
+          <geom class="collision" pos="-0.0175 0 -0.0185" quat="0.707107 -0.707107 0 0" type="mesh" material="hip_l_material" mesh="hip_l" />
+          <body name="duck5_upper_leg_left" pos="0.025 0 -0.0185" quat="0.5 -0.5 0.5 -0.5">
+            <inertial pos="0.006766 0.0228838 0.0134531" quat="0.620818 0.374279 -0.583696 0.365786" mass="0.0482067" diaginertia="1.98453e-05 1.9108e-05 8.11799e-06" />
+            <joint name="duck5_left_hip_pitch" class="chosen_actuator" pos="0 0 0" axis="0 0 1" range="-1.5708 1.5708" />
+            <geom class="visual" pos="0 0 -0.0425" quat="0.5 -0.5 -0.5 -0.5" material="upper_leg_left_material" mesh="upper_leg_left" />
+            <geom class="visual" pos="0.022 0.0357771 0.0125" quat="0 0.707107 0 0.707107" material="xl330_material" mesh="xl330" />
+            <geom class="visual" pos="0 0 -0.0425" quat="0.5 -0.5 -0.5 -0.5" material="upper_leg_rigidity_plate_material" mesh="upper_leg_rigidity_plate" />
+            <geom class="visual" pos="0.022 0.0357771 -0.004" quat="0 0 0 1" material="seeed_bearing__configuration__22x16x4_material" mesh="seeed_bearing__configuration__22x16x4" />
+            <geom class="visual" pos="0 0 0.0125" quat="0.5 0.5 -0.5 0.5" material="xl330_material" mesh="xl330" />
+            <body name="duck5_leg" pos="0.022 0.0357771 -0.004" quat="0 0.707107 0.707107 0">
+              <inertial pos="-1.52e-10 0.0318937 -0.00953505" quat="0.806473 0.591271 0 0" mass="0.0215844" diaginertia="5.25056e-06 4.58054e-06 1.91378e-06" />
+              <joint name="duck5_left_knee" class="chosen_actuator" pos="0 0 0" axis="0 0 1" range="-1.5708 1.5708" />
+              <geom class="visual" pos="-0.022 0.0357771 0.0385" quat="0.5 0.5 0.5 -0.5" material="leg_material" mesh="leg" />
+              <geom class="collision" pos="-0.022 0.0357771 0.0385" quat="0.5 0.5 0.5 -0.5" type="mesh" material="leg_material" mesh="leg" />
+              <geom class="visual" pos="0 0.042 -0.0115" quat="0.5 -0.5 -0.5 -0.5" material="xl330_material" mesh="xl330" />
+              <body name="duck5_ankle_left" pos="0 0.042 -0.026" quat="0 -1 0 0">
+                <inertial pos="-0.00615742 -0.0137483 -0.0156585" quat="0.474723 0.505182 0.517427 0.501696" mass="0.0300246" diaginertia="1.11623e-05 7.7432e-06 5.90334e-06" />
+                <joint name="duck5_left_ankle" class="chosen_actuator" pos="0 0 0" axis="0 0 1" range="-1.5708 1.5708" />
+                <geom class="visual" pos="-0.022 0.00622291 -0.0647" quat="0.5 -0.5 -0.5 -0.5" material="sole_left_material" mesh="sole_left" />
+                <geom name="duck5_left_foot_collision" class="collision" pos="-0.022 0.00622291 -0.0647" quat="0.5 -0.5 -0.5 -0.5" type="mesh" material="sole_left_material" mesh="sole_left" />
+                <geom class="visual" pos="-0.022 0.00622291 -0.0647" quat="0.5 -0.5 -0.5 -0.5" material="foot_left_material" mesh="foot_left" />
+                <geom class="visual" pos="0 0 -0.0322" quat="0 0 0 1" material="seeed_bearing__configuration_default_material" mesh="seeed_bearing__configuration_default" />
+                <geom class="visual" pos="-0.022 0.00622291 -0.0647" quat="0.5 -0.5 -0.5 -0.5" material="ankle_left_material" mesh="ankle_left" />
+                <site name="duck5_left_foot" pos="0 -0.0238146 -0.0140852" quat="0 0 -0.707107 -0.707107" group="3" />
+              </body>
+            </body>
+          </body>
+        </body>
+      </body>
+      <body name="duck5_neck" pos="0.026 0.0145 0.0324215" quat="0 0 0.707107 -0.707107">
+        <inertial pos="0 -0.025 0.0141665" quat="0.707107 0.707107 0 0" mass="0.0368414" diaginertia="1.72925e-05 1.63707e-05 3.12694e-06" />
+        <joint name="duck5_neck_pitch" class="chosen_actuator" pos="0 0 0" axis="0 0 1" range="-1.5708 1.0472" />
+        <geom class="visual" pos="0.022 0.05 0.028" quat="0.5 0.5 0.5 -0.5" material="neck_material" mesh="neck" />
+        <geom class="visual" pos="0 0 0.0145" quat="0.5 -0.5 -0.5 -0.5" material="xl330_material" mesh="xl330" />
+        <geom class="visual" pos="0 -0.05 0.0145" quat="0.5 0.5 -0.5 0.5" material="xl330_material" mesh="xl330" />
+        <geom class="visual" pos="0.022 0.05 0.003" quat="0.5 0.5 0.5 -0.5" material="neck_material" mesh="neck" />
+        <body name="duck5_neck_pitch" pos="0 -0.05 0" quat="0 1 0 0">
+          <inertial pos="-6.533e-09 0.0116641 -0.0145" mass="0.00572" diaginertia="1.09186e-06 9.66855e-07 5.12111e-07" />
+          <joint name="duck5_head_pitch" class="chosen_actuator" pos="0 0 0" axis="0 0 1" range="-1.5708 1.5708" />
+          <geom class="visual" pos="0 0.0287931 -0.0145" quat="0.5 -0.5 -0.5 -0.5" material="neck_pitch_material" mesh="neck_pitch" />
+          <geom class="visual" pos="0 0.0207931 -0.0145" quat="0.707107 0.707107 0 0" material="seeed_bearing__configuration__22x16x4_material" mesh="seeed_bearing__configuration__22x16x4" />
+          <body name="duck5_yaw_roll_motion" pos="0 0.0186931 -0.0145" quat="0 0 -0.707107 -0.707107">
+            <inertial pos="-0.000166657 -0.00500964 0.0178065" quat="0.174483 0.690172 -0.0192577 0.702031" mass="0.0486" diaginertia="9.65512e-06 8.11788e-06 6.8878e-06" />
+            <joint name="duck5_head_yaw" class="chosen_actuator" pos="0 0 0" axis="0 0 1" range="-2.96706 2.96706" />
+            <geom class="visual" pos="0 0 0.01" quat="0.707107 0 0 0.707107" material="yaw_roll_motion_material" mesh="yaw_roll_motion" />
+            <geom class="visual" pos="0 0 0.0145" quat="0.5 -0.5 -0.5 -0.5" material="xl330_material" mesh="xl330" />
+            <geom class="visual" pos="-0.016 0 0.0145" quat="0.707107 0 -0.707107 0" material="seeed_bearing__configuration__22x16x4_material" mesh="seeed_bearing__configuration__22x16x4" />
+            <geom class="visual" pos="0.018 0 0.0145" quat="0.707107 0 -0.707107 0" material="seeed_bearing__configuration__22x16x4_material" mesh="seeed_bearing__configuration__22x16x4" />
+            <body name="duck5_jaw_soft" pos="-0.0179 0 0.0145" quat="0.707107 0 -0.707107 0">
+              <inertial pos="0.00460523 0.00120047 -0.0324761" quat="0.999608 0.0201488 -0.0191644 -0.00313932" mass="0.188766" diaginertia="0.000321067 0.000254266 0.000149461" />
+              <joint name="duck5_head_roll" class="chosen_actuator" pos="0 0 0" axis="0 0 1" range="-0.436332 0.436332" />
+              <geom class="visual" pos="0.0155 -9.13778e-05 -0.05548" quat="0.5 -0.5 0.5 -0.5" material="lens_material" mesh="lens" />
+              <geom class="visual" pos="-0.0045 -9.13778e-05 -0.0178" quat="0.5 0.5 0.5 0.5" material="face_part_material" mesh="face_part" />
+              <geom class="visual" pos="0.003 0.0255 -0.018" quat="0.707107 0 0 -0.707107" material="xl330_material" mesh="xl330" />
+              <geom class="visual" pos="-0.0046 0 -0.0179996" quat="0.5 0.5 0.5 0.5" material="jaw_soft_material" mesh="jaw_soft" />
+              <geom class="visual" pos="-0.0045 0 -0.018" quat="0.5 0.5 0.5 0.5" material="motor_support_material" mesh="motor_support" />
+              <geom class="visual" pos="-0.0045 0 -0.018" quat="0.5 0.5 0.5 0.5" material="top_head_shell_material" mesh="top_head_shell" />
+              <geom class="collision" pos="-0.0045 0 -0.018" quat="0.5 0.5 0.5 0.5" type="mesh" material="top_head_shell_material" mesh="top_head_shell" />
+              <geom class="visual" pos="0 0 0.0145" quat="0.5 -0.5 -0.5 -0.5" material="xl330_material" mesh="xl330" />
+              <geom class="visual" pos="0.0032 -0.04 -0.018" quat="0.5 -0.5 0.5 0.5" material="seeed_bearing__configuration_default_material" mesh="seeed_bearing__configuration_default" />
+              <geom class="visual" pos="0.02694 0.0289936 -0.0519" quat="0.707107 0 0 -0.707107" material="elec_rpi_robot_hat_pcb_material" mesh="elec_rpi_robot_hat_pcb" />
+              <geom class="visual" pos="-0.00420071 1.7776e-08 -0.0180814" quat="0.5 0.5 0.5 0.5" material="soft_mouth_top_material" mesh="soft_mouth_top" />
+              <geom class="visual" pos="-0.0045 -9.13778e-05 -0.0178" quat="0.5 0.5 0.5 0.5" material="noenoeil_material" mesh="noenoeil" />
+              <geom class="visual" pos="-0.0045 0 -0.018" quat="0.5 0.5 0.5 0.5" material="jaw_material" mesh="jaw" />
+              <geom class="collision" pos="-0.0045 0 -0.018" quat="0.5 0.5 0.5 0.5" type="mesh" material="jaw_material" mesh="jaw" />
+              <geom class="visual" pos="-0.0043 0 -0.018" quat="0.5 0.5 0.5 0.5" material="bottom_head_shell_material" mesh="bottom_head_shell" />
+              <geom class="collision" pos="-0.0043 0 -0.018" quat="0.5 0.5 0.5 0.5" type="mesh" material="bottom_head_shell_material" mesh="bottom_head_shell" />
+              <geom class="visual" pos="0.0155 -9.13778e-05 -0.05558" quat="0.5 -0.5 0.5 -0.5" material="m12_lens_holder_material" mesh="m12_lens_holder" />
+              <geom class="visual" pos="0.015435 -1.13778e-05 -0.06001" quat="0.5 -0.5 -0.5 0.5" material="pcb__raspberry_pi_zero_2_w_material" mesh="pcb__raspberry_pi_zero_2_w" />
+              <geom class="visual" pos="0.01 -0.016786 0.0260226" quat="0.5 0.5 0.5 0.5" material="speaker_material" mesh="speaker" />
+              <site name="duck5_head_camera" pos="0.0155 -9.13778e-05 -0.0733" quat="0.707107 0 0.707107 0" group="3" />
+              <site name="duck5_tof" pos="0.0135 0.0224086 -0.0733" quat="0.707107 0 0.707107 0" group="3" />
+              <site name="duck5_head_imu" pos="0.0152323 0.000111069 -0.05106" group="3" />
+              <site name="duck5_mouth_tip" pos="-0.00809334 0 -0.0777383" quat="0.704015 0 0.710185 0" group="3" />
+              <camera name="duck5_head_camera" pos="0.0155 -9.13778e-05 -0.0733" quat="0 0 -1 0" />
+            </body>
+          </body>
+        </body>
+      </body>
+      <body name="duck5_bearing_roll" pos="0.006 -0.0175 -0.005" quat="0 -0.707107 -0.707107 0">
+        <inertial pos="-8.8e-11 0.00099414 0.0168917" quat="0.99973 -0.0232487 0 0" mass="0.0230406" diaginertia="4.1964e-06 3.41989e-06 2.32413e-06" />
+        <joint name="duck5_right_hip_yaw" class="chosen_actuator" pos="0 0 0" axis="0 0 1" range="-0.523599 0.436332" />
+        <geom class="visual" pos="-0.0175 -0.002 0.0125" quat="0 1 0 0" material="yaw2roll_material" mesh="yaw2roll" />
+        <geom class="visual" pos="0 0 0.0125" quat="0 -0.707107 0.707107 0" material="xl330_material" mesh="xl330" />
+        <geom class="visual" pos="-0.0175 -0.002 0.0125" quat="0 1 0 0" material="bearing_roll_material" mesh="bearing_roll" />
+        <geom class="visual" pos="0 0.0165 0.0125" quat="0.5 0.5 0.5 -0.5" material="seeed_bearing__configuration__22x16x4_material" mesh="seeed_bearing__configuration__22x16x4" />
+        <body name="duck5_hip_l_2" pos="0 0.0165 0.0125" quat="0 0 0.707107 0.707107">
+          <inertial pos="0.014815 1.6212e-08 -0.00829992" quat="0.94694 -8.2459e-07 -0.321411 -2.79883e-07" mass="0.00618934" diaginertia="1.15976e-06 1.15753e-06 3.52458e-07" />
+          <joint name="duck5_right_hip_roll" class="chosen_actuator" pos="0 0 0" axis="0 0 1" range="-0.383972 0.383972" />
+          <geom class="visual" pos="-0.0175 0 -0.0185" quat="0.707107 -0.707107 0 0" material="hip_l_material" mesh="hip_l" />
+          <geom class="collision" pos="-0.0175 0 -0.0185" quat="0.707107 -0.707107 0 0" type="mesh" material="hip_l_material" mesh="hip_l" />
+          <geom class="visual" pos="0.025 0 -0.0185" quat="0.5 0.5 -0.5 -0.5" material="seeed_bearing__configuration__22x16x4_material" mesh="seeed_bearing__configuration__22x16x4" />
+          <body name="duck5_upper_leg_right" pos="0.025 0 -0.0185" quat="0.5 -0.5 0.5 -0.5">
+            <inertial pos="-0.006766 0.0228838 0.0134531" quat="0.365786 0.583696 -0.374279 0.620818" mass="0.0482067" diaginertia="1.98453e-05 1.9108e-05 8.11799e-06" />
+            <joint name="duck5_right_hip_pitch" class="chosen_actuator" pos="0 0 0" axis="0 0 1" range="-1.5708 1.5708" />
+            <geom class="visual" pos="-0.022 0.0357771 0.0125" quat="0.707107 0 -0.707107 0" material="xl330_material" mesh="xl330" />
+            <geom class="visual" pos="-0.022 0.0357771 0" quat="0 1 0 0" material="seeed_bearing__configuration__22x16x4_material" mesh="seeed_bearing__configuration__22x16x4" />
+            <geom class="visual" pos="0 0 0.0435" quat="0.5 -0.5 0.5 0.5" material="upper_leg_rigidity_plate_material" mesh="upper_leg_rigidity_plate" />
+            <geom class="visual" pos="0 0 -0.0425" quat="0.5 -0.5 0.5 0.5" material="upper_leg_right_material" mesh="upper_leg_right" />
+            <geom class="visual" pos="0 0 0.0125" quat="0.5 0.5 -0.5 0.5" material="xl330_material" mesh="xl330" />
+            <body name="duck5_leg_2" pos="-0.022 0.0357771 -0.004" quat="0 1 0 0">
+              <inertial pos="-0.0318937 -1.52e-10 -0.00953505" quat="0.570263 0.418091 0.418091 0.570263" mass="0.0215844" diaginertia="5.25056e-06 4.58054e-06 1.91378e-06" />
+              <joint name="duck5_right_knee" class="chosen_actuator" pos="0 0 0" axis="0 0 1" range="-1.5708 1.5708" />
+              <geom class="visual" pos="-0.042 0 -0.0115" quat="0.707107 0 -0.707107 0" material="xl330_material" mesh="xl330" />
+              <geom class="visual" pos="-0.0357771 -0.022 0.0385" quat="0.707107 0 0.707107 0" material="leg_material" mesh="leg" />
+              <geom class="collision" pos="-0.0357771 -0.022 0.0385" quat="0.707107 0 0.707107 0" type="mesh" material="leg_material" mesh="leg" />
+              <body name="duck5_ankle_right" pos="-0.042 0 -0.026" quat="0 -0.707107 -0.707107 0">
+                <inertial pos="0.00615539 -0.0137482 -0.0156566" quat="0.517424 0.501653 0.474682 0.505266" mass="0.0300251" diaginertia="1.11622e-05 7.74321e-06 5.90344e-06" />
+                <joint name="duck5_right_ankle" class="chosen_actuator" pos="0 0 0" axis="0 0 1" range="-1.5708 1.5708" />
+                <geom class="visual" pos="0.022 0.00622291 -0.0647" quat="0.5 -0.5 0.5 0.5" material="ankle_right_material" mesh="ankle_right" />
+                <geom class="visual" pos="0.022 0.00622291 -0.0647" quat="0.5 -0.5 0.5 0.5" material="sole_right_material" mesh="sole_right" />
+                <geom name="duck5_right_foot_collision" class="collision" pos="0.022 0.00622291 -0.0647" quat="0.5 -0.5 0.5 0.5" type="mesh" material="sole_right_material" mesh="sole_right" />
+                <geom class="visual" pos="0 0 -0.0292" quat="0 -1 0 0" material="seeed_bearing__configuration_default_material" mesh="seeed_bearing__configuration_default" />
+                <geom class="visual" pos="0.022 0.00622291 -0.0647" quat="0.5 -0.5 0.5 0.5" material="foot_right_material" mesh="foot_right" />
+                <site name="duck5_right_foot" pos="0 -0.0238146 -0.0140852" quat="0.707107 -0.707107 0 0" group="3" />
+              </body>
+            </body>
+          </body>
+        </body>
+      </body>
+    </body>
+  </worldbody>
+  <actuator>
+    <general name="duck0_left_hip_yaw" class="chosen_actuator" joint="duck0_left_hip_yaw" />
+    <general name="duck0_left_hip_roll" class="chosen_actuator" joint="duck0_left_hip_roll" />
+    <general name="duck0_left_hip_pitch" class="chosen_actuator" joint="duck0_left_hip_pitch" />
+    <general name="duck0_left_knee" class="chosen_actuator" joint="duck0_left_knee" />
+    <general name="duck0_left_ankle" class="chosen_actuator" joint="duck0_left_ankle" />
+    <general name="duck0_neck_pitch" class="chosen_actuator" joint="duck0_neck_pitch" />
+    <general name="duck0_head_pitch" class="chosen_actuator" joint="duck0_head_pitch" />
+    <general name="duck0_head_yaw" class="chosen_actuator" joint="duck0_head_yaw" />
+    <general name="duck0_head_roll" class="chosen_actuator" joint="duck0_head_roll" />
+    <general name="duck0_right_hip_yaw" class="chosen_actuator" joint="duck0_right_hip_yaw" />
+    <general name="duck0_right_hip_roll" class="chosen_actuator" joint="duck0_right_hip_roll" />
+    <general name="duck0_right_hip_pitch" class="chosen_actuator" joint="duck0_right_hip_pitch" />
+    <general name="duck0_right_knee" class="chosen_actuator" joint="duck0_right_knee" />
+    <general name="duck0_right_ankle" class="chosen_actuator" joint="duck0_right_ankle" />
+    <general name="duck1_left_hip_yaw" class="chosen_actuator" joint="duck1_left_hip_yaw" />
+    <general name="duck1_left_hip_roll" class="chosen_actuator" joint="duck1_left_hip_roll" />
+    <general name="duck1_left_hip_pitch" class="chosen_actuator" joint="duck1_left_hip_pitch" />
+    <general name="duck1_left_knee" class="chosen_actuator" joint="duck1_left_knee" />
+    <general name="duck1_left_ankle" class="chosen_actuator" joint="duck1_left_ankle" />
+    <general name="duck1_neck_pitch" class="chosen_actuator" joint="duck1_neck_pitch" />
+    <general name="duck1_head_pitch" class="chosen_actuator" joint="duck1_head_pitch" />
+    <general name="duck1_head_yaw" class="chosen_actuator" joint="duck1_head_yaw" />
+    <general name="duck1_head_roll" class="chosen_actuator" joint="duck1_head_roll" />
+    <general name="duck1_right_hip_yaw" class="chosen_actuator" joint="duck1_right_hip_yaw" />
+    <general name="duck1_right_hip_roll" class="chosen_actuator" joint="duck1_right_hip_roll" />
+    <general name="duck1_right_hip_pitch" class="chosen_actuator" joint="duck1_right_hip_pitch" />
+    <general name="duck1_right_knee" class="chosen_actuator" joint="duck1_right_knee" />
+    <general name="duck1_right_ankle" class="chosen_actuator" joint="duck1_right_ankle" />
+    <general name="duck2_left_hip_yaw" class="chosen_actuator" joint="duck2_left_hip_yaw" />
+    <general name="duck2_left_hip_roll" class="chosen_actuator" joint="duck2_left_hip_roll" />
+    <general name="duck2_left_hip_pitch" class="chosen_actuator" joint="duck2_left_hip_pitch" />
+    <general name="duck2_left_knee" class="chosen_actuator" joint="duck2_left_knee" />
+    <general name="duck2_left_ankle" class="chosen_actuator" joint="duck2_left_ankle" />
+    <general name="duck2_neck_pitch" class="chosen_actuator" joint="duck2_neck_pitch" />
+    <general name="duck2_head_pitch" class="chosen_actuator" joint="duck2_head_pitch" />
+    <general name="duck2_head_yaw" class="chosen_actuator" joint="duck2_head_yaw" />
+    <general name="duck2_head_roll" class="chosen_actuator" joint="duck2_head_roll" />
+    <general name="duck2_right_hip_yaw" class="chosen_actuator" joint="duck2_right_hip_yaw" />
+    <general name="duck2_right_hip_roll" class="chosen_actuator" joint="duck2_right_hip_roll" />
+    <general name="duck2_right_hip_pitch" class="chosen_actuator" joint="duck2_right_hip_pitch" />
+    <general name="duck2_right_knee" class="chosen_actuator" joint="duck2_right_knee" />
+    <general name="duck2_right_ankle" class="chosen_actuator" joint="duck2_right_ankle" />
+    <general name="duck3_left_hip_yaw" class="chosen_actuator" joint="duck3_left_hip_yaw" />
+    <general name="duck3_left_hip_roll" class="chosen_actuator" joint="duck3_left_hip_roll" />
+    <general name="duck3_left_hip_pitch" class="chosen_actuator" joint="duck3_left_hip_pitch" />
+    <general name="duck3_left_knee" class="chosen_actuator" joint="duck3_left_knee" />
+    <general name="duck3_left_ankle" class="chosen_actuator" joint="duck3_left_ankle" />
+    <general name="duck3_neck_pitch" class="chosen_actuator" joint="duck3_neck_pitch" />
+    <general name="duck3_head_pitch" class="chosen_actuator" joint="duck3_head_pitch" />
+    <general name="duck3_head_yaw" class="chosen_actuator" joint="duck3_head_yaw" />
+    <general name="duck3_head_roll" class="chosen_actuator" joint="duck3_head_roll" />
+    <general name="duck3_right_hip_yaw" class="chosen_actuator" joint="duck3_right_hip_yaw" />
+    <general name="duck3_right_hip_roll" class="chosen_actuator" joint="duck3_right_hip_roll" />
+    <general name="duck3_right_hip_pitch" class="chosen_actuator" joint="duck3_right_hip_pitch" />
+    <general name="duck3_right_knee" class="chosen_actuator" joint="duck3_right_knee" />
+    <general name="duck3_right_ankle" class="chosen_actuator" joint="duck3_right_ankle" />
+    <general name="duck4_left_hip_yaw" class="chosen_actuator" joint="duck4_left_hip_yaw" />
+    <general name="duck4_left_hip_roll" class="chosen_actuator" joint="duck4_left_hip_roll" />
+    <general name="duck4_left_hip_pitch" class="chosen_actuator" joint="duck4_left_hip_pitch" />
+    <general name="duck4_left_knee" class="chosen_actuator" joint="duck4_left_knee" />
+    <general name="duck4_left_ankle" class="chosen_actuator" joint="duck4_left_ankle" />
+    <general name="duck4_neck_pitch" class="chosen_actuator" joint="duck4_neck_pitch" />
+    <general name="duck4_head_pitch" class="chosen_actuator" joint="duck4_head_pitch" />
+    <general name="duck4_head_yaw" class="chosen_actuator" joint="duck4_head_yaw" />
+    <general name="duck4_head_roll" class="chosen_actuator" joint="duck4_head_roll" />
+    <general name="duck4_right_hip_yaw" class="chosen_actuator" joint="duck4_right_hip_yaw" />
+    <general name="duck4_right_hip_roll" class="chosen_actuator" joint="duck4_right_hip_roll" />
+    <general name="duck4_right_hip_pitch" class="chosen_actuator" joint="duck4_right_hip_pitch" />
+    <general name="duck4_right_knee" class="chosen_actuator" joint="duck4_right_knee" />
+    <general name="duck4_right_ankle" class="chosen_actuator" joint="duck4_right_ankle" />
+    <general name="duck5_left_hip_yaw" class="chosen_actuator" joint="duck5_left_hip_yaw" />
+    <general name="duck5_left_hip_roll" class="chosen_actuator" joint="duck5_left_hip_roll" />
+    <general name="duck5_left_hip_pitch" class="chosen_actuator" joint="duck5_left_hip_pitch" />
+    <general name="duck5_left_knee" class="chosen_actuator" joint="duck5_left_knee" />
+    <general name="duck5_left_ankle" class="chosen_actuator" joint="duck5_left_ankle" />
+    <general name="duck5_neck_pitch" class="chosen_actuator" joint="duck5_neck_pitch" />
+    <general name="duck5_head_pitch" class="chosen_actuator" joint="duck5_head_pitch" />
+    <general name="duck5_head_yaw" class="chosen_actuator" joint="duck5_head_yaw" />
+    <general name="duck5_head_roll" class="chosen_actuator" joint="duck5_head_roll" />
+    <general name="duck5_right_hip_yaw" class="chosen_actuator" joint="duck5_right_hip_yaw" />
+    <general name="duck5_right_hip_roll" class="chosen_actuator" joint="duck5_right_hip_roll" />
+    <general name="duck5_right_hip_pitch" class="chosen_actuator" joint="duck5_right_hip_pitch" />
+    <general name="duck5_right_knee" class="chosen_actuator" joint="duck5_right_knee" />
+    <general name="duck5_right_ankle" class="chosen_actuator" joint="duck5_right_ankle" />
+  </actuator>
+  <sensor>
+    <framequat objtype="site" objname="duck0_imu" name="duck0_orientation" noise="0.001" />
+    <gyro site="duck0_imu" name="duck0_angular-velocity" noise="0.005" />
+    <gyro site="duck0_imu" name="duck0_imu_ang_vel" />
+    <velocimeter site="duck0_imu" name="duck0_imu_lin_vel" />
+    <accelerometer site="duck0_imu" name="duck0_imu_accel" />
+    <subtreeangmom body="duck0_trunk_base" name="duck0_root_angmom" />
+    <framequat objtype="site" objname="duck1_imu" name="duck1_orientation" noise="0.001" />
+    <gyro site="duck1_imu" name="duck1_angular-velocity" noise="0.005" />
+    <gyro site="duck1_imu" name="duck1_imu_ang_vel" />
+    <velocimeter site="duck1_imu" name="duck1_imu_lin_vel" />
+    <accelerometer site="duck1_imu" name="duck1_imu_accel" />
+    <subtreeangmom body="duck1_trunk_base" name="duck1_root_angmom" />
+    <framequat objtype="site" objname="duck2_imu" name="duck2_orientation" noise="0.001" />
+    <gyro site="duck2_imu" name="duck2_angular-velocity" noise="0.005" />
+    <gyro site="duck2_imu" name="duck2_imu_ang_vel" />
+    <velocimeter site="duck2_imu" name="duck2_imu_lin_vel" />
+    <accelerometer site="duck2_imu" name="duck2_imu_accel" />
+    <subtreeangmom body="duck2_trunk_base" name="duck2_root_angmom" />
+    <framequat objtype="site" objname="duck3_imu" name="duck3_orientation" noise="0.001" />
+    <gyro site="duck3_imu" name="duck3_angular-velocity" noise="0.005" />
+    <gyro site="duck3_imu" name="duck3_imu_ang_vel" />
+    <velocimeter site="duck3_imu" name="duck3_imu_lin_vel" />
+    <accelerometer site="duck3_imu" name="duck3_imu_accel" />
+    <subtreeangmom body="duck3_trunk_base" name="duck3_root_angmom" />
+    <framequat objtype="site" objname="duck4_imu" name="duck4_orientation" noise="0.001" />
+    <gyro site="duck4_imu" name="duck4_angular-velocity" noise="0.005" />
+    <gyro site="duck4_imu" name="duck4_imu_ang_vel" />
+    <velocimeter site="duck4_imu" name="duck4_imu_lin_vel" />
+    <accelerometer site="duck4_imu" name="duck4_imu_accel" />
+    <subtreeangmom body="duck4_trunk_base" name="duck4_root_angmom" />
+    <framequat objtype="site" objname="duck5_imu" name="duck5_orientation" noise="0.001" />
+    <gyro site="duck5_imu" name="duck5_angular-velocity" noise="0.005" />
+    <gyro site="duck5_imu" name="duck5_imu_ang_vel" />
+    <velocimeter site="duck5_imu" name="duck5_imu_lin_vel" />
+    <accelerometer site="duck5_imu" name="duck5_imu_accel" />
+    <subtreeangmom body="duck5_trunk_base" name="duck5_root_angmom" />
+  </sensor>
+</mujoco>

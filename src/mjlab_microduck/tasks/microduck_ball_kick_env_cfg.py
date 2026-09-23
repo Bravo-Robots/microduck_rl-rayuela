@@ -89,9 +89,11 @@ BALL_POS_NOISE_XY = 0.015
 
 # Target kick speed (m/s). The first trained policy (linear reward capped at
 # 5 m/s) kicked much harder than needed — this tames the kick to a gentle,
-# controlled tap. NOTE: the kick reward weights below are scaled to keep the
-# at-target payoff ≈ +3/step regardless of this value (weight ≈ 3/target for
-# the capped term) — if you change the target, rescale the weights with it.
+# controlled tap. NOTE: the weights below (12 / -4) were sized for an earlier
+# 0.25 m/s target (+3/step at target); at 1.0 m/s they pay +12/step and the
+# reward-block comments' "0.25 m/s" / "4x the target" figures are stale.
+# Kept as-is: this is the config the deployed policies were trained with.
+# For a commanded, per-episode target see microduck_ball_kick_speed_env_cfg.
 BALL_TARGET_SPEED = 1.0
 
 # Trunk standing height (measured natural equilibrium at HOME — see standup env).

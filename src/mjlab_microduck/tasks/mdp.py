@@ -5806,6 +5806,154 @@ def ball_speed_overshoot_penalty(
     return over.clamp(0.0, max_penalty)
 
 
+def _ball_forward_speed_and_target(
+    env: ManagerBasedRlEnv, command_name: str, asset_name: str
+) -> tuple[torch.Tensor, torch.Tensor]:
+    """(ball speed along the kick direction, commanded target speed), per env."""
+    ball: Entity = env.scene[asset_name]
+    fwd = (ball.data.root_link_lin_vel_w[:, :2] * _ball_kick_dir(env)).sum(dim=1)
+    # Floor only guards the division below; KickSpeedCommand never samples 0.
+    tgt = env.command_manager.get_command(command_name)[:, 0].clamp(min=1e-3)
+    return torch.nan_to_num(fwd, nan=0.0), tgt
+
+
+def ball_forward_velocity_to_command(
+    env: ManagerBasedRlEnv,
+    command_name: str = "twist",
+    asset_name: str = "ball",
+) -> torch.Tensor:
+    """``ball_forward_velocity`` with a per-env COMMANDED target, as a fraction
+    of that target: min(max(fwd, 0), tgt) / tgt, in [0, 1].
+
+    The division is the point. With a raw capped speed a 1.8 m/s target would
+    pay 6x a 0.3 m/s one at target, so the policy would learn the hard kicks
+    and neglect the gentle ones; normalised, every target pays the same when
+    hit. Same "linear from first touch" bootstrap gradient as the fixed-target
+    term. Pair with ``ball_speed_overshoot_to_command``.
+    """
+    fwd, tgt = _ball_forward_speed_and_target(env, command_name, asset_name)
+    return torch.minimum(fwd.clamp(min=0.0), tgt) / tgt
+
+
+def ball_speed_overshoot_to_command(
+    env: ManagerBasedRlEnv,
+    command_name: str = "twist",
+    asset_name: str = "ball",
+    max_penalty: float = 5.0,
+) -> torch.Tensor:
+    """``ball_speed_overshoot_penalty`` with a per-env COMMANDED target, as a
+    fraction of that target: clamp(fwd - tgt, 0, max_penalty) / tgt (>= 0,
+    use a NEGATIVE weight). Normalising the same way as the forward term keeps
+    the under/over slope ratio identical for every target speed.
+    """
+    fwd, tgt = _ball_forward_speed_and_target(env, command_name, asset_name)
+    return (fwd - tgt).clamp(0.0, max_penalty) / tgt
+
+
+def ball_kick_aim_error(
+    env: ManagerBasedRlEnv,
+    asset_name: str = "ball",
+    min_speed: float = 0.05,
+    max_penalty: float = 1.0,
+) -> torch.Tensor:
+    """|tan(angle between the ball's velocity and the kick direction)|, i.e.
+    lateral speed over forward speed (>= 0, use a NEGATIVE weight).
+
+    ``ball_forward_velocity_to_command`` only PROJECTS onto the kick
+    direction, so an off-axis kick is not punished, merely not rewarded — and
+    the projection barely notices: a ball leaving 20 deg off-axis still
+    collects cos(20 deg) = 94% of the forward payoff. A policy trained without
+    an aim term leaves ~20 deg off and misses the narrow squares.
+
+    Measured (right-foot policy, escena_rayuela.xml, ball launched from HOME):
+    the angle of the ball's velocity AT EXIT matches the angle of the line to
+    where it comes to rest within 1.5-3 deg, so the roll is straight and the
+    error is entirely in the kick — an instantaneous velocity term is the
+    right lever, and no spin/Magnus term is needed. The same sweep shows the
+    error TURNS WITH THE COMMANDED STRENGTH (-20 deg at 0.30, 0 deg at 1.10,
+    +12 deg at 1.50), so it cannot be cancelled with a fixed yaw offset at
+    deployment either: it has to be trained out.
+
+    A RATIO, not a fraction of the commanded speed: the angle is what the
+    board cares about, and normalising by the command instead would let the
+    policy pay off a bad aim by kicking harder, and would price the same
+    20 deg differently at each commanded strength. ``max_penalty`` caps the
+    tangent so a nearly-sideways kick (tan -> inf) cannot dominate the stack,
+    and the term is muted below ``min_speed`` where the direction of a barely
+    moving ball is meaningless.
+
+    Introduce it with a curriculum ramp (see AGENTS.md): an aiming tax applied
+    while the kick itself is still being discovered makes not kicking win.
+    """
+    ball: Entity = env.scene[asset_name]
+    kick_dir = _ball_kick_dir(env)
+    vel = torch.nan_to_num(ball.data.root_link_lin_vel_w[:, :2], nan=0.0)
+    # Perpendicular to the kick direction, in the ground plane.
+    perp = torch.stack((-kick_dir[:, 1], kick_dir[:, 0]), dim=1)
+    fwd = (vel * kick_dir).sum(dim=1)
+    lat = (vel * perp).sum(dim=1)
+    ratio = lat.abs() / fwd.clamp(min=min_speed)
+    moving = vel.norm(dim=1) > min_speed
+    return torch.where(moving, ratio, torch.zeros_like(ratio)).clamp(0.0, max_penalty)
+
+
+def ball_speed_gaussian_to_command(
+    env: ManagerBasedRlEnv,
+    command_name: str = "twist",
+    asset_name: str = "ball",
+    std: float = 0.25,
+) -> torch.Tensor:
+    """exp(-0.5 * ((fwd - tgt) / (std * tgt))^2) in [0, 1]: peaks ONLY at the
+    commanded speed, with a std that is a FRACTION of the command.
+
+    ``ball_forward_velocity_to_command`` is a plateau — once the ball is at or
+    above the target it pays the full weight and there is no gradient left
+    pulling it back down, only the separate (small, linear) overshoot cost.
+    Measured consequence on the trained policy: a 0.30 command leaves the foot
+    at 0.67 m/s, so the soft half of the range is unusable in practice.
+
+    The relative std keeps the demanded PRECISION the same across a wide
+    range (25% of 0.3 and 25% of 2.5), which is also what the deployment
+    cares about — a casilla is a fixed fraction of the throw, not a fixed
+    number of m/s.
+
+    This term alone has almost no gradient before the kick exists (a still
+    ball scores exp(-8) ~ 0), so ramp it in against the linear term rather
+    than starting from it.
+    """
+    fwd, tgt = _ball_forward_speed_and_target(env, command_name, asset_name)
+    err = (fwd - tgt) / (std * tgt)
+    return torch.exp(-0.5 * err * err)
+
+
+def kick_speed_range_curriculum(
+    env: ManagerBasedRlEnv,
+    env_ids: torch.Tensor,
+    command_name: str,
+    range_stages: list[dict],
+) -> torch.Tensor:
+    """Step-staged widening of a KickSpeedCommand's sampled speed range.
+
+    ``range_stages`` is a list of ``{"step": int, "range": (lo, hi)}``. Starts
+    narrow around the strength the policy already produces and opens both ends
+    as the kick consolidates — the wide range from step 0 would mean most
+    episodes ask for a strength the policy cannot yet make, and per AGENTS.md
+    a stage must be phase-aligned with what has actually been learned.
+
+    Mutates the live command term (managers deepcopy their cfg at init, so
+    writing to env.cfg would be a silent no-op).
+    """
+    del env_ids
+    term = env.command_manager.get_term(command_name)
+    assert term is not None, f"Command term '{command_name}' not found"
+    lo, hi = range_stages[0]["range"]
+    for stage in range_stages:
+        if env.common_step_counter > stage["step"]:
+            lo, hi = stage["range"]
+    term.set_speed_range(lo, hi)
+    return torch.tensor([float(hi)])
+
+
 def single_foot_grounded_reward(
     env: ManagerBasedRlEnv,
     sensor_name: str,
@@ -6329,6 +6477,71 @@ class SitStandCommandCfg(UniformVelocityCommandCfg):
 
     def build(self, env: ManagerBasedRlEnv) -> "SitStandCommand":
         return SitStandCommand(self, env)
+
+
+class KickSpeedCommand(UniformVelocityCommand):
+    """Kick-strength command: cmd = [target_ball_exit_speed, 0, 0].
+
+    One uniform sample from cfg.speed_range per episode, carried in the twist
+    vx slot so the 61D actor obs layout is unchanged (the same slot sitstand
+    uses for its posture flag). The value is never zero, so its input weights
+    always train.
+
+    Speed, not distance: the training ball has no rolling resistance and never
+    stops, so a landing distance is undefined here, while the exit speed is
+    both well defined and what the kick actually controls. The surface-
+    specific speed->distance map lives on the deployment side.
+    """
+
+    def __init__(self, cfg, env: ManagerBasedRlEnv):
+        super().__init__(cfg, env)
+        self._speed_lo, self._speed_hi = (float(v) for v in cfg.speed_range)
+        self._log_uniform = bool(getattr(cfg, "log_uniform", True))
+
+    @property
+    def command(self) -> torch.Tensor:
+        return self.vel_command_b
+
+    def set_speed_range(self, lo: float, hi: float) -> None:
+        """Widen/narrow the sampled range mid-run (used by the curriculum)."""
+        self._speed_lo, self._speed_hi = float(lo), float(hi)
+
+    def _resample_command(self, env_ids: torch.Tensor) -> None:
+        n = len(env_ids)
+        if n == 0:
+            return
+        self.vel_command_b[env_ids] = 0.0
+        u = torch.empty(n, device=self.device).uniform_(0.0, 1.0)
+        if self._log_uniform:
+            # Equal experience per OCTAVE, not per m/s. The kick is scored on
+            # RELATIVE speed error, so 0.3->0.4 is as hard a distinction as
+            # 1.8->2.4; uniform sampling over a range as wide as 0.25-2.6
+            # spends two thirds of the data above 1.4, exactly where relative
+            # precision is easiest.
+            lo, hi = math.log(self._speed_lo), math.log(self._speed_hi)
+            self.vel_command_b[env_ids, 0] = torch.exp(lo + (hi - lo) * u)
+        else:
+            self.vel_command_b[env_ids, 0] = (
+                self._speed_lo + (self._speed_hi - self._speed_lo) * u
+            )
+
+    def _update_command(self) -> None:
+        pass  # No heading controller / standing-env machinery.
+
+    def _update_metrics(self) -> None:
+        pass  # No velocity-tracking metrics for a kick strength.
+
+
+@_dataclass(kw_only=True)
+class KickSpeedCommandCfg(UniformVelocityCommandCfg):
+    class_type: type = KickSpeedCommand
+    # Target ball exit speed (m/s), sampled once per episode.
+    speed_range: tuple[float, float] = (0.3, 1.8)
+    # Sample the range log-uniformly (see _resample_command).
+    log_uniform: bool = True
+
+    def build(self, env: ManagerBasedRlEnv) -> "KickSpeedCommand":
+        return KickSpeedCommand(self, env)
 
 
 def _posture_blend(env: ManagerBasedRlEnv, command_name: str) -> torch.Tensor:

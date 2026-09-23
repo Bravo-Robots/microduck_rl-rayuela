@@ -1,0 +1,26 @@
+<mujoco model="microduck_ball_rolling">
+    <compiler angle="radian" autolimits="true"/>
+    <worldbody>
+        <!-- Misma pelota de ball.xml (70mm, 15g, naranja) PERO con
+             condim="6" y friccion de rodadura 0.002, para que se detenga
+             a ~1.6 m en vez de rodar indefinidamente.
+             NO modificar ball.xml: la tarea ball_kick ya entrenada depende
+             de su fisica original. -->
+        <!-- OUT of the roulade's path, matching ball.xml / scene_ball.xml.
+             It used to spawn at (0.09, -0.042) — the kick_right foot offset —
+             but the roll sweeps roughly x in [-0.3, +0.25] around the duck, so
+             the ball sat right under it AND off-centre to the right: the duck
+             rolled onto it, the asymmetric hit twisted the head to -109deg in
+             yaw and the neck never tucked (measured against scene_ball.xml,
+             where the trajectory is clean). It does not need to start at the
+             foot anyway — trigger_behavior("kick_left"/"kick_right") calls
+             _place_ball(), which teleports it to the correct foot offset at
+             kick time. -->
+        <body name="ball" pos="0.3 0 0.035">
+            <freejoint name="ball_free"/>
+            <inertial pos="0 0 0" mass="0.015" diaginertia="1.225e-5 1.225e-5 1.225e-5"/>
+            <geom type="sphere" name="ball_geom" size="0.035" rgba="1 0.55 0 1"
+                  condim="6" friction="0.5 0.005 0.002"/>
+        </body>
+    </worldbody>
+</mujoco>

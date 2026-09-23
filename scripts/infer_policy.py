@@ -217,7 +217,8 @@ class PolicyInference:
                  sitstand_onnx_path=None,
                  kick_left_onnx_path=None, kick_right_onnx_path=None,
                  roulade_onnx_path=None,
-                 kick_duration=3.0, roulade_duration=2.0):
+                 kick_duration=3.0, roulade_duration=2.0,
+                 kick_speed_commanded=False, kick_speed=1.0):
         self.bam_ctrl = bam_ctrl  # bam.mujoco.MujocoController (None = legacy position actuators)
         self.model = model
         self.data = data
@@ -320,6 +321,11 @@ class PolicyInference:
         self.behavior_durations = {}
         self.behavior_mode = None       # name of the running behavior, or None
         self.behavior_time_left = 0.0
+        # Opt-in for kick policies trained on BallKickSpeed: they read a target
+        # ball exit speed (m/s) from the twist vx slot. Off by default so the
+        # fixed-speed kick policies keep their all-zero command.
+        self.kick_speed_commanded = kick_speed_commanded
+        self.kick_speed = float(kick_speed)
         for name, path, duration in (
             ("kick_left", kick_left_onnx_path, kick_duration),
             ("kick_right", kick_right_onnx_path, kick_duration),
@@ -474,8 +480,12 @@ class PolicyInference:
             if self.behavior_mode is not None:
                 # Kick/roulade were trained with an all-zero 13D command
                 # (twist ~0, head/body slots zero-padded) — feeding stale
-                # head/body commands would be out-of-distribution.
+                # head/body commands would be out-of-distribution. The one
+                # exception is a speed-commanded kick (BallKickSpeed task),
+                # which reads its target ball exit speed, raw m/s, from vx.
                 self.command = np.zeros(13, dtype=np.float32)
+                if self.kick_speed_commanded and self.behavior_mode.startswith("kick_"):
+                    self.command[0] = self.kick_speed
                 return
             cmd = np.zeros(13, dtype=np.float32)
             # twist slot (or phase encoding for ground_pick — overwritten there)
@@ -537,7 +547,7 @@ class PolicyInference:
         self.vel_cmd = np.array([lin_vel_x, lin_vel_y, ang_vel_z], dtype=np.float32)
         self._update_policy_session()
         self._update_command()
-        print(f"Vel cmd: [{lin_vel_x:.2f}, {lin_vel_y:.2f}, {ang_vel_z:.2f}] [{self.current_policy}]")
+        # print(f"Vel cmd: [{lin_vel_x:.2f}, {lin_vel_y:.2f}, {ang_vel_z:.2f}] [{self.current_policy}]")
 
     def toggle_body_pose_mode(self):
         """Toggle body pose control mode on/off."""
@@ -728,13 +738,17 @@ class PolicyInference:
         self.command[1] = np.sin(2 * np.pi * self.ground_pick_phase)
         self.command[2] = 0.0
 
-    def trigger_behavior(self, name):
+    def trigger_behavior(self, name, kick_speed=None):
         """Start an episodic behavior (kick_left / kick_right / roulade).
 
         The behavior policies were trained to run from a standing start with an
         all-zero command and end standing, so triggering is a session swap; a
         timer hands control back to walking/standing afterwards.
+        ``kick_speed`` (m/s) sets the target ball exit speed for a
+        speed-commanded kick (see kick_speed_commanded); ignored otherwise.
         """
+        if kick_speed is not None:
+            self.kick_speed = float(kick_speed)
         session = self.behavior_sessions.get(name)
         if session is None:
             print(f"{name} unavailable: no --{name.replace('_', '-')} policy loaded")
@@ -907,6 +921,8 @@ def main():
     parser.add_argument("--kick-right", type=str, default=None, help="Path to RIGHT-foot ball kick policy ONNX (press L to trigger). Requires --new-cmd-obs. Loads a scene with a ball.")
     parser.add_argument("--roulade", type=str, default=None, help="Path to roulade (forward roll) policy ONNX (press R to trigger). Requires --new-cmd-obs.")
     parser.add_argument("--kick-duration", type=float, default=3.0, help="Seconds a kick policy stays active before handing back to standing/walking (default: 3.0)")
+    parser.add_argument("--kick-speed-commanded", action="store_true", help="The --kick-left/--kick-right policies are BallKickSpeed ones: feed them a target ball exit speed through the twist vx slot (fixed-speed kick policies must NOT get this flag — they were trained on an all-zero command)")
+    parser.add_argument("--kick-speed", type=float, default=1.0, help="Target ball exit speed in m/s for --kick-speed-commanded (~0.3-1.8 spans the rayuela board; default: 1.0)")
     parser.add_argument("--roulade-duration", type=float, default=2.0, help="Seconds the roulade policy stays active before handing back to standing/walking (default: 2.0, ~the roll itself; the standing/walking policy takes over for the settle)")
     parser.add_argument("--lin-vel-x", type=float, default=0.0, help="Initial linear velocity X command (m/s)")
     parser.add_argument("--lin-vel-y", type=float, default=0.0, help="Initial linear velocity Y command (m/s)")
@@ -1058,6 +1074,8 @@ def main():
         kick_right_onnx_path=args.kick_right,
         roulade_onnx_path=args.roulade,
         kick_duration=args.kick_duration,
+        kick_speed_commanded=args.kick_speed_commanded,
+        kick_speed=args.kick_speed,
         roulade_duration=args.roulade_duration,
     )
     policy.set_vel_cmd(args.lin_vel_x, args.lin_vel_y, args.ang_vel_z)

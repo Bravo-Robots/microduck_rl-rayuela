@@ -43,6 +43,11 @@ from .microduck_ball_kick_env_cfg import (
     make_microduck_ball_kick_env_cfg,
     MicroduckBallKickRlCfg,
 )
+from .microduck_ball_kick_speed_env_cfg import (
+    make_microduck_ball_kick_speed_env_cfg,
+    MicroduckBallKickSpeedLeftRlCfg,
+    MicroduckBallKickSpeedRightRlCfg,
+)
 from .microduck_sitstand_env_cfg import (
     make_microduck_sitstand_env_cfg,
     MicroduckSitStandRlCfg,
@@ -163,6 +168,21 @@ register_mjlab_task(
     rl_cfg=MicroduckBallKickRlCfg,
     runner_cls=MicroduckOnPolicyRunner,
 )
+
+# BallKickSpeed — same kick with a commanded ball exit speed (twist vx slot),
+# so the rayuela can reach every casilla. One task per foot: together they
+# cover all 10 casillas, neither does alone.
+for _foot, _rl_cfg in (
+    ("right", MicroduckBallKickSpeedRightRlCfg),
+    ("left", MicroduckBallKickSpeedLeftRlCfg),
+):
+    register_mjlab_task(
+        task_id=f"Mjlab-BallKickSpeed-{_foot.capitalize()}-Flat-MicroDuck",
+        env_cfg=make_microduck_ball_kick_speed_env_cfg(kick_foot=_foot),
+        play_env_cfg=make_microduck_ball_kick_speed_env_cfg(play=True, kick_foot=_foot),
+        rl_cfg=_rl_cfg,
+        runner_cls=MicroduckOnPolicyRunner,
+    )
 
 register_mjlab_task(
     task_id="Mjlab-GroundPick-Rough-MicroDuck",

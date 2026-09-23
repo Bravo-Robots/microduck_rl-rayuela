@@ -1,0 +1,132 @@
+<?xml version='1.0' encoding='utf-8'?>
+<mujoco model="tablero_rayuela">
+  <visual>
+    <global offwidth="1280" offheight="720" />
+  </visual>
+  <worldbody>
+    <geom name="board_plate" type="box" size="1.8000 0.60000 0.0005" pos="1.2000 0 0.0005" rgba="0.93 0.93 0.90 1" contype="0" conaffinity="0" />
+    <geom name="board_hline_0" type="box" size="0.008 0.1550 0.0015" pos="0.30000 0.00000 0.0015" rgba="0.12 0.12 0.14 1" contype="0" conaffinity="0" />
+    <geom name="board_hline_1" type="box" size="0.008 0.3000 0.0015" pos="0.60000 0.00000 0.0015" rgba="0.12 0.12 0.14 1" contype="0" conaffinity="0" />
+    <geom name="board_hline_2" type="box" size="0.008 0.3000 0.0015" pos="0.90000 0.00000 0.0015" rgba="0.12 0.12 0.14 1" contype="0" conaffinity="0" />
+    <geom name="board_hline_3" type="box" size="0.008 0.3000 0.0015" pos="1.20000 0.00000 0.0015" rgba="0.12 0.12 0.14 1" contype="0" conaffinity="0" />
+    <geom name="board_hline_4" type="box" size="0.008 0.3000 0.0015" pos="1.50000 0.00000 0.0015" rgba="0.12 0.12 0.14 1" contype="0" conaffinity="0" />
+    <geom name="board_hline_5" type="box" size="0.008 0.3000 0.0015" pos="1.80000 0.00000 0.0015" rgba="0.12 0.12 0.14 1" contype="0" conaffinity="0" />
+    <geom name="board_hline_6" type="box" size="0.008 0.4000 0.0015" pos="2.10000 0.00000 0.0015" rgba="0.12 0.12 0.14 1" contype="0" conaffinity="0" />
+    <!-- <geom name="board_hline_7" type="box" size="0.008 0.20000 0.0015" pos="1.80000 0.00000 0.0015" rgba="0.12 0.12 0.14 1" contype="0" conaffinity="0" /> -->
+    
+    <geom name="board_edge1_left" type="box" size="0.15000 0.008 0.0015" pos="0.4500 -0.150000 0.0015" rgba="0.12 0.12 0.14 1" contype="0" conaffinity="0" />
+    <geom name="board_edge1_right" type="box" size="0.15000 0.008 0.0015" pos="0.4500 0.150000 0.0015" rgba="0.12 0.12 0.14 1" contype="0" conaffinity="0" />
+    <geom name="board_edge2" type="box" size="0.15000 0.008 0.0015" pos="0.7500 -0.3000 0.0015" rgba="0.12 0.12 0.14 1" contype="0" conaffinity="0" />
+    <geom name="board_edge3" type="box" size="0.15000 0.008 0.0015" pos="0.7500 0.3000 0.0015" rgba="0.12 0.12 0.14 1" contype="0" conaffinity="0" />
+    <geom name="board_edge4_left" type="box" size="0.15000 0.008 0.0015" pos="1.0500 -0.150000 0.0015" rgba="0.12 0.12 0.14 1" contype="0" conaffinity="0" />
+    <geom name="board_edge4_right" type="box" size="0.15000 0.008 0.0015" pos="1.0500 0.150000 0.0015" rgba="0.12 0.12 0.14 1" contype="0" conaffinity="0" />
+    <geom name="board_edge5" type="box" size="0.15000 0.008 0.0015" pos="1.3500 -0.3000 0.0015" rgba="0.12 0.12 0.14 1" contype="0" conaffinity="0" />
+    <geom name="board_edge6" type="box" size="0.15000 0.008 0.0015" pos="1.3500 0.3000 0.0015" rgba="0.12 0.12 0.14 1" contype="0" conaffinity="0" />
+    <geom name="board_edge7_left" type="box" size="0.15000 0.008 0.0015" pos="1.6500 -0.150000 0.0015" rgba="0.12 0.12 0.14 1" contype="0" conaffinity="0" />
+    <geom name="board_edge7_right" type="box" size="0.15000 0.008 0.0015" pos="1.6500 0.150000 0.0015" rgba="0.12 0.12 0.14 1" contype="0" conaffinity="0" />
+    <geom name="board_edge8" type="box" size="0.15000 0.008 0.0015" pos="1.9500 -0.3000 0.0015" rgba="0.12 0.12 0.14 1" contype="0" conaffinity="0" />
+    <geom name="board_edge9" type="box" size="0.15000 0.008 0.0015" pos="1.9500 0.3000 0.0015" rgba="0.12 0.12 0.14 1" contype="0" conaffinity="0" />
+
+    <geom name="board_vline_23" type="box" size="0.15000 0.008 0.0015" pos="0.7500 0.0000 0.0015" rgba="0.12 0.12 0.14 1" contype="0" conaffinity="0" />
+    <geom name="board_vline_56" type="box" size="0.15000 0.008 0.0015" pos="1.3500 0.00000 0.0015" rgba="0.12 0.12 0.14 1" contype="0" conaffinity="0" />
+    <geom name="board_vline_89" type="box" size="0.15000 0.008 0.0015" pos="1.9500 0.00000 0.0015" rgba="0.12 0.12 0.14 1" contype="0" conaffinity="0" />
+
+    <geom name="board_cielo_arc_0" type="box" size="0.02343 0.008 0.0015" pos="2.12239 -0.39874 0.0015" quat="0.999607 0 0 0.028046" rgba="0.12 0.12 0.14 1" contype="0" conaffinity="0" />
+    <geom name="board_cielo_arc_1" type="box" size="0.02343 0.008 0.0015" pos="2.16690 -0.39373 0.0015" quat="0.996461 0 0 0.084051" rgba="0.12 0.12 0.14 1" contype="0" conaffinity="0" />
+    <geom name="board_cielo_arc_2" type="box" size="0.02343 0.008 0.0015" pos="2.21056 -0.38376 0.0015" quat="0.990181 0 0 0.139790" rgba="0.12 0.12 0.14 1" contype="0" conaffinity="0" />
+    <geom name="board_cielo_arc_3" type="box" size="0.02343 0.008 0.0015" pos="2.25283 -0.36897 0.0015" quat="0.980785 0 0 0.195090" rgba="0.12 0.12 0.14 1" contype="0" conaffinity="0" />
+    <geom name="board_cielo_arc_4" type="box" size="0.02343 0.008 0.0015" pos="2.29318 -0.34954 0.0015" quat="0.968304 0 0 0.249776" rgba="0.12 0.12 0.14 1" contype="0" conaffinity="0" />
+    <geom name="board_cielo_arc_5" type="box" size="0.02343 0.008 0.0015" pos="2.33110 -0.32571 0.0015" quat="0.952775 0 0 0.303677" rgba="0.12 0.12 0.14 1" contype="0" conaffinity="0" />
+    <geom name="board_cielo_arc_6" type="box" size="0.02343 0.008 0.0015" pos="2.36612 -0.29779 0.0015" quat="0.934249 0 0 0.356622" rgba="0.12 0.12 0.14 1" contype="0" conaffinity="0" />
+    <geom name="board_cielo_arc_7" type="box" size="0.02343 0.008 0.0015" pos="2.39779 -0.26612 0.0015" quat="0.912783 0 0 0.408444" rgba="0.12 0.12 0.14 1" contype="0" conaffinity="0" />
+    <geom name="board_cielo_arc_8" type="box" size="0.02343 0.008 0.0015" pos="2.42571 -0.23110 0.0015" quat="0.888446 0 0 0.458982" rgba="0.12 0.12 0.14 1" contype="0" conaffinity="0" />
+    <geom name="board_cielo_arc_9" type="box" size="0.02343 0.008 0.0015" pos="2.44954 -0.19318 0.0015" quat="0.861313 0 0 0.508075" rgba="0.12 0.12 0.14 1" contype="0" conaffinity="0" />
+    <geom name="board_cielo_arc_10" type="box" size="0.02343 0.008 0.0015" pos="2.46897 -0.15283 0.0015" quat="0.831470 0 0 0.555570" rgba="0.12 0.12 0.14 1" contype="0" conaffinity="0" />
+    <geom name="board_cielo_arc_11" type="box" size="0.02343 0.008 0.0015" pos="2.48376 -0.11056 0.0015" quat="0.799010 0 0 0.601317" rgba="0.12 0.12 0.14 1" contype="0" conaffinity="0" />
+    <geom name="board_cielo_arc_12" type="box" size="0.02343 0.008 0.0015" pos="2.49373 -0.06690 0.0015" quat="0.764037 0 0 0.645172" rgba="0.12 0.12 0.14 1" contype="0" conaffinity="0" />
+    <geom name="board_cielo_arc_13" type="box" size="0.02343 0.008 0.0015" pos="2.49874 -0.02239 0.0015" quat="0.726660 0 0 0.686997" rgba="0.12 0.12 0.14 1" contype="0" conaffinity="0" />
+    <geom name="board_cielo_arc_14" type="box" size="0.02343 0.008 0.0015" pos="2.49874 0.02239 0.0015" quat="0.686997 0 0 0.726660" rgba="0.12 0.12 0.14 1" contype="0" conaffinity="0" />
+    <geom name="board_cielo_arc_15" type="box" size="0.02343 0.008 0.0015" pos="2.49373 0.06690 0.0015" quat="0.645172 0 0 0.764037" rgba="0.12 0.12 0.14 1" contype="0" conaffinity="0" />
+    <geom name="board_cielo_arc_16" type="box" size="0.02343 0.008 0.0015" pos="2.48376 0.11056 0.0015" quat="0.601317 0 0 0.799010" rgba="0.12 0.12 0.14 1" contype="0" conaffinity="0" />
+    <geom name="board_cielo_arc_17" type="box" size="0.02343 0.008 0.0015" pos="2.46897 0.15283 0.0015" quat="0.555570 0 0 0.831470" rgba="0.12 0.12 0.14 1" contype="0" conaffinity="0" />
+    <geom name="board_cielo_arc_18" type="box" size="0.02343 0.008 0.0015" pos="2.44954 0.19318 0.0015" quat="0.508075 0 0 0.861313" rgba="0.12 0.12 0.14 1" contype="0" conaffinity="0" />
+    <geom name="board_cielo_arc_19" type="box" size="0.02343 0.008 0.0015" pos="2.42571 0.23110 0.0015" quat="0.458982 0 0 0.888446" rgba="0.12 0.12 0.14 1" contype="0" conaffinity="0" />
+    <geom name="board_cielo_arc_20" type="box" size="0.02343 0.008 0.0015" pos="2.39779 0.26612 0.0015" quat="0.408444 0 0 0.912783" rgba="0.12 0.12 0.14 1" contype="0" conaffinity="0" />
+    <geom name="board_cielo_arc_21" type="box" size="0.02343 0.008 0.0015" pos="2.36612 0.29779 0.0015" quat="0.356622 0 0 0.934249" rgba="0.12 0.12 0.14 1" contype="0" conaffinity="0" />
+    <geom name="board_cielo_arc_22" type="box" size="0.02343 0.008 0.0015" pos="2.33110 0.32571 0.0015" quat="0.303677 0 0 0.952775" rgba="0.12 0.12 0.14 1" contype="0" conaffinity="0" />
+    <geom name="board_cielo_arc_23" type="box" size="0.02343 0.008 0.0015" pos="2.29318 0.34954 0.0015" quat="0.249776 0 0 0.968304" rgba="0.12 0.12 0.14 1" contype="0" conaffinity="0" />
+    <geom name="board_cielo_arc_24" type="box" size="0.02343 0.008 0.0015" pos="2.25283 0.36897 0.0015" quat="0.195090 0 0 0.980785" rgba="0.12 0.12 0.14 1" contype="0" conaffinity="0" />
+    <geom name="board_cielo_arc_25" type="box" size="0.02343 0.008 0.0015" pos="2.21056 0.38376 0.0015" quat="0.139790 0 0 0.990181" rgba="0.12 0.12 0.14 1" contype="0" conaffinity="0" />
+    <geom name="board_cielo_arc_26" type="box" size="0.02343 0.008 0.0015" pos="2.16690 0.39373 0.0015" quat="0.084051 0 0 0.996461" rgba="0.12 0.12 0.14 1" contype="0" conaffinity="0" />
+    <geom name="board_cielo_arc_27" type="box" size="0.02343 0.008 0.0015" pos="2.12239 0.39874 0.0015" quat="0.028046 0 0 0.999607" rgba="0.12 0.12 0.14 1" contype="0" conaffinity="0" />
+    
+    <!-- BEGIN casilla labels: 7-segment digits, positions from board_geometry.casilla_center() -->
+    <!-- Rotated 90deg clockwise (seen from above) so they read from the duck's
+         point of view: the duck faces +x, so a digit's 'up' points to +x and its
+         'right' to -y (the duck's right hand). -->
+    <geom name="casilla_label_1_0b" type="box" size="0.0250 0.0060 0.0006" pos="0.4750 0.0000 0.0016" rgba="0.45 0.45 0.48 1" contype="0" conaffinity="0" />
+    <geom name="casilla_label_1_0c" type="box" size="0.0250 0.0060 0.0006" pos="0.4250 0.0000 0.0016" rgba="0.45 0.45 0.48 1" contype="0" conaffinity="0" />
+    <geom name="casilla_label_2_0a" type="box" size="0.0060 0.0300 0.0006" pos="0.8000 0.1500 0.0016" rgba="0.45 0.45 0.48 1" contype="0" conaffinity="0" />
+    <geom name="casilla_label_2_0b" type="box" size="0.0250 0.0060 0.0006" pos="0.7750 0.1200 0.0016" rgba="0.45 0.45 0.48 1" contype="0" conaffinity="0" />
+    <geom name="casilla_label_2_0g" type="box" size="0.0060 0.0300 0.0006" pos="0.7500 0.1500 0.0016" rgba="0.45 0.45 0.48 1" contype="0" conaffinity="0" />
+    <geom name="casilla_label_2_0e" type="box" size="0.0250 0.0060 0.0006" pos="0.7250 0.1800 0.0016" rgba="0.45 0.45 0.48 1" contype="0" conaffinity="0" />
+    <geom name="casilla_label_2_0d" type="box" size="0.0060 0.0300 0.0006" pos="0.7000 0.1500 0.0016" rgba="0.45 0.45 0.48 1" contype="0" conaffinity="0" />
+    <geom name="casilla_label_3_0a" type="box" size="0.0060 0.0300 0.0006" pos="0.8000 -0.1500 0.0016" rgba="0.45 0.45 0.48 1" contype="0" conaffinity="0" />
+    <geom name="casilla_label_3_0b" type="box" size="0.0250 0.0060 0.0006" pos="0.7750 -0.1800 0.0016" rgba="0.45 0.45 0.48 1" contype="0" conaffinity="0" />
+    <geom name="casilla_label_3_0g" type="box" size="0.0060 0.0300 0.0006" pos="0.7500 -0.1500 0.0016" rgba="0.45 0.45 0.48 1" contype="0" conaffinity="0" />
+    <geom name="casilla_label_3_0c" type="box" size="0.0250 0.0060 0.0006" pos="0.7250 -0.1800 0.0016" rgba="0.45 0.45 0.48 1" contype="0" conaffinity="0" />
+    <geom name="casilla_label_3_0d" type="box" size="0.0060 0.0300 0.0006" pos="0.7000 -0.1500 0.0016" rgba="0.45 0.45 0.48 1" contype="0" conaffinity="0" />
+    <geom name="casilla_label_4_0f" type="box" size="0.0250 0.0060 0.0006" pos="1.0750 0.0300 0.0016" rgba="0.45 0.45 0.48 1" contype="0" conaffinity="0" />
+    <geom name="casilla_label_4_0g" type="box" size="0.0060 0.0300 0.0006" pos="1.0500 0.0000 0.0016" rgba="0.45 0.45 0.48 1" contype="0" conaffinity="0" />
+    <geom name="casilla_label_4_0b" type="box" size="0.0250 0.0060 0.0006" pos="1.0750 -0.0300 0.0016" rgba="0.45 0.45 0.48 1" contype="0" conaffinity="0" />
+    <geom name="casilla_label_4_0c" type="box" size="0.0250 0.0060 0.0006" pos="1.0250 -0.0300 0.0016" rgba="0.45 0.45 0.48 1" contype="0" conaffinity="0" />
+    <geom name="casilla_label_5_0a" type="box" size="0.0060 0.0300 0.0006" pos="1.4000 0.1500 0.0016" rgba="0.45 0.45 0.48 1" contype="0" conaffinity="0" />
+    <geom name="casilla_label_5_0f" type="box" size="0.0250 0.0060 0.0006" pos="1.3750 0.1800 0.0016" rgba="0.45 0.45 0.48 1" contype="0" conaffinity="0" />
+    <geom name="casilla_label_5_0g" type="box" size="0.0060 0.0300 0.0006" pos="1.3500 0.1500 0.0016" rgba="0.45 0.45 0.48 1" contype="0" conaffinity="0" />
+    <geom name="casilla_label_5_0c" type="box" size="0.0250 0.0060 0.0006" pos="1.3250 0.1200 0.0016" rgba="0.45 0.45 0.48 1" contype="0" conaffinity="0" />
+    <geom name="casilla_label_5_0d" type="box" size="0.0060 0.0300 0.0006" pos="1.3000 0.1500 0.0016" rgba="0.45 0.45 0.48 1" contype="0" conaffinity="0" />
+    <geom name="casilla_label_6_0a" type="box" size="0.0060 0.0300 0.0006" pos="1.4000 -0.1500 0.0016" rgba="0.45 0.45 0.48 1" contype="0" conaffinity="0" />
+    <geom name="casilla_label_6_0f" type="box" size="0.0250 0.0060 0.0006" pos="1.3750 -0.1200 0.0016" rgba="0.45 0.45 0.48 1" contype="0" conaffinity="0" />
+    <geom name="casilla_label_6_0g" type="box" size="0.0060 0.0300 0.0006" pos="1.3500 -0.1500 0.0016" rgba="0.45 0.45 0.48 1" contype="0" conaffinity="0" />
+    <geom name="casilla_label_6_0e" type="box" size="0.0250 0.0060 0.0006" pos="1.3250 -0.1200 0.0016" rgba="0.45 0.45 0.48 1" contype="0" conaffinity="0" />
+    <geom name="casilla_label_6_0d" type="box" size="0.0060 0.0300 0.0006" pos="1.3000 -0.1500 0.0016" rgba="0.45 0.45 0.48 1" contype="0" conaffinity="0" />
+    <geom name="casilla_label_6_0c" type="box" size="0.0250 0.0060 0.0006" pos="1.3250 -0.1800 0.0016" rgba="0.45 0.45 0.48 1" contype="0" conaffinity="0" />
+    <geom name="casilla_label_7_0a" type="box" size="0.0060 0.0300 0.0006" pos="1.7000 0.0000 0.0016" rgba="0.45 0.45 0.48 1" contype="0" conaffinity="0" />
+    <geom name="casilla_label_7_0b" type="box" size="0.0250 0.0060 0.0006" pos="1.6750 -0.0300 0.0016" rgba="0.45 0.45 0.48 1" contype="0" conaffinity="0" />
+    <geom name="casilla_label_7_0c" type="box" size="0.0250 0.0060 0.0006" pos="1.6250 -0.0300 0.0016" rgba="0.45 0.45 0.48 1" contype="0" conaffinity="0" />
+    <geom name="casilla_label_8_0a" type="box" size="0.0060 0.0300 0.0006" pos="2.0000 0.1500 0.0016" rgba="0.45 0.45 0.48 1" contype="0" conaffinity="0" />
+    <geom name="casilla_label_8_0b" type="box" size="0.0250 0.0060 0.0006" pos="1.9750 0.1200 0.0016" rgba="0.45 0.45 0.48 1" contype="0" conaffinity="0" />
+    <geom name="casilla_label_8_0c" type="box" size="0.0250 0.0060 0.0006" pos="1.9250 0.1200 0.0016" rgba="0.45 0.45 0.48 1" contype="0" conaffinity="0" />
+    <geom name="casilla_label_8_0d" type="box" size="0.0060 0.0300 0.0006" pos="1.9000 0.1500 0.0016" rgba="0.45 0.45 0.48 1" contype="0" conaffinity="0" />
+    <geom name="casilla_label_8_0e" type="box" size="0.0250 0.0060 0.0006" pos="1.9250 0.1800 0.0016" rgba="0.45 0.45 0.48 1" contype="0" conaffinity="0" />
+    <geom name="casilla_label_8_0f" type="box" size="0.0250 0.0060 0.0006" pos="1.9750 0.1800 0.0016" rgba="0.45 0.45 0.48 1" contype="0" conaffinity="0" />
+    <geom name="casilla_label_8_0g" type="box" size="0.0060 0.0300 0.0006" pos="1.9500 0.1500 0.0016" rgba="0.45 0.45 0.48 1" contype="0" conaffinity="0" />
+    <geom name="casilla_label_9_0a" type="box" size="0.0060 0.0300 0.0006" pos="2.0000 -0.1500 0.0016" rgba="0.45 0.45 0.48 1" contype="0" conaffinity="0" />
+    <geom name="casilla_label_9_0b" type="box" size="0.0250 0.0060 0.0006" pos="1.9750 -0.1800 0.0016" rgba="0.45 0.45 0.48 1" contype="0" conaffinity="0" />
+    <geom name="casilla_label_9_0c" type="box" size="0.0250 0.0060 0.0006" pos="1.9250 -0.1800 0.0016" rgba="0.45 0.45 0.48 1" contype="0" conaffinity="0" />
+    <geom name="casilla_label_9_0d" type="box" size="0.0060 0.0300 0.0006" pos="1.9000 -0.1500 0.0016" rgba="0.45 0.45 0.48 1" contype="0" conaffinity="0" />
+    <geom name="casilla_label_9_0f" type="box" size="0.0250 0.0060 0.0006" pos="1.9750 -0.1200 0.0016" rgba="0.45 0.45 0.48 1" contype="0" conaffinity="0" />
+    <geom name="casilla_label_9_0g" type="box" size="0.0060 0.0300 0.0006" pos="1.9500 -0.1500 0.0016" rgba="0.45 0.45 0.48 1" contype="0" conaffinity="0" />
+    <geom name="casilla_label_10_0b" type="box" size="0.0250 0.0060 0.0006" pos="2.2948 0.0475 0.0016" rgba="0.45 0.45 0.48 1" contype="0" conaffinity="0" />
+    <geom name="casilla_label_10_0c" type="box" size="0.0250 0.0060 0.0006" pos="2.2448 0.0475 0.0016" rgba="0.45 0.45 0.48 1" contype="0" conaffinity="0" />
+    <geom name="casilla_label_10_1a" type="box" size="0.0060 0.0300 0.0006" pos="2.3198 -0.0475 0.0016" rgba="0.45 0.45 0.48 1" contype="0" conaffinity="0" />
+    <geom name="casilla_label_10_1b" type="box" size="0.0250 0.0060 0.0006" pos="2.2948 -0.0775 0.0016" rgba="0.45 0.45 0.48 1" contype="0" conaffinity="0" />
+    <geom name="casilla_label_10_1c" type="box" size="0.0250 0.0060 0.0006" pos="2.2448 -0.0775 0.0016" rgba="0.45 0.45 0.48 1" contype="0" conaffinity="0" />
+    <geom name="casilla_label_10_1d" type="box" size="0.0060 0.0300 0.0006" pos="2.2198 -0.0475 0.0016" rgba="0.45 0.45 0.48 1" contype="0" conaffinity="0" />
+    <geom name="casilla_label_10_1e" type="box" size="0.0250 0.0060 0.0006" pos="2.2448 -0.0175 0.0016" rgba="0.45 0.45 0.48 1" contype="0" conaffinity="0" />
+    <geom name="casilla_label_10_1f" type="box" size="0.0250 0.0060 0.0006" pos="2.2948 -0.0175 0.0016" rgba="0.45 0.45 0.48 1" contype="0" conaffinity="0" />
+    <!-- END casilla labels -->
+
+    <geom name="fiducial_near_right" type="cylinder" size="0.025 0.002" pos="-0.15000 -0.4000 0.002" rgba="1 0 0 1" contype="0" conaffinity="0" />
+    <geom name="fiducial_near_left" type="cylinder" size="0.025 0.002" pos="-0.15000 0.4000 0.002" rgba="0 1 0 1" contype="0" conaffinity="0" />
+    <geom name="fiducial_far_left" type="cylinder" size="0.025 0.002" pos="2.5000 0.4000 0.002" rgba="0 0.4 1 1" contype="0" conaffinity="0" />
+    <geom name="fiducial_far_right" type="cylinder" size="0.025 0.002" pos="2.5000 -0.4000 0.002" rgba="1 0 1 1" contype="0" conaffinity="0" />
+
+    <geom name="start_spot" type="cylinder" size="0.08 0.0015" pos="0 0 0.0015" rgba="0.941 0.513 0.972 0.8" contype="0" conaffinity="0" />
+    <body name="board_center" pos="0.7000 0 0">
+      <site name="board_center_site" size="0.001" rgba="0 0 0 0" />
+    </body>
+    <camera name="angled_cam" pos="-0.15000 -0.9 1.5" mode="targetbody" target="board_center" fovy="58" resolution="1280 720"/>
+    <camera name="top_cam" pos="0.97500 0 2.2" mode="targetbody" target="board_center" fovy="55" />
+  </worldbody>
+</mujoco>
