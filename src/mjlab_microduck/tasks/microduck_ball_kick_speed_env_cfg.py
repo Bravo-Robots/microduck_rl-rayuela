@@ -1,20 +1,17 @@
 """Microduck BallKickSpeed — the ball kick with a COMMANDED strength.
 
-Same task as microduck_ball_kick_env_cfg (built on its factory, so DR / obs
-noise / NaN guards / BAM wiring stay identical), except the target ball exit
-speed is no longer the constant BALL_TARGET_SPEED: it is sampled per episode
-from KICK_SPEED_RANGE and fed to the actor through the twist vx command slot
-(actor obs index 48). The 61D obs layout is unchanged, so the policy stays
-hot-swappable with the rest of the family.
+Built on microduck_ball_kick_env_cfg's factory, so DR / obs noise / NaN
+guards / BAM wiring stay identical. The only change: the target ball exit
+speed is sampled per episode from KICK_SPEED_RANGE and fed to the actor
+through the twist vx slot (actor obs index 48), leaving the 61D layout — and
+therefore hot-swappability — untouched.
 
-Why a speed command and not a distance: the training ball (ball.xml, default
-condim 3) has no rolling resistance and never stops, so "how far it goes" is
-undefined here, while exit speed is well defined, is what the kick actually
-controls, and survives a change of floor. The floor-specific speed->distance
-map lives on the deployment side (see rayuela board_geometry).
+Speed, not distance: the training ball has no rolling resistance and never
+stops, so a landing distance is undefined here, while exit speed is what the
+kick actually controls and survives a change of floor. The floor-specific
+speed->distance map lives on the deployment side (rayuela board_geometry).
 
-The range and the two accuracy problems were measured with the trained
-policy in the loop (escena_rayuela.xml, ball launched from HOME):
+Measured with the trained policy in the loop (escena_rayuela.xml, from HOME):
 
     command  exit speed  off-axis angle   travel
       0.30      0.67       -20 deg         0.46 m
@@ -22,59 +19,51 @@ policy in the loop (escena_rayuela.xml, ball launched from HOME):
       1.10      1.22        -3 deg         1.73 m
       1.50      1.81       +12 deg         3.47 m
 
-Two things that shaped this cfg. (1) The soft half of the range does not
-exist: 0.30 commanded comes out at 0.67, because the linear reward is a
-plateau above the target -> hence the Gaussian. (2) The kick does not go
-straight, and the angle TURNS WITH THE STRENGTH, so it cannot be corrected
-with a fixed yaw offset at deployment -> hence the aim term, on both feet.
-The angle of the ball at exit matches the angle to where it stops within
-3 deg, so aiming the exit velocity is the whole job (no spin term needed).
+Two findings shaped this cfg. (1) The soft half of the range did not exist —
+0.30 commanded came out at 0.67 — because the linear reward is a plateau above
+the target, hence the Gaussian. (2) The kick does not go straight and the angle
+TURNS WITH THE STRENGTH, so no fixed yaw offset can fix it at deployment, hence
+the aim term on both feet. Exit angle matches the angle to where the ball stops
+within 3 deg, so aiming the exit velocity is the whole job (no spin term).
 
-Train both feet — a right-foot ball travels along y~-0.04 and can only land on
-1,3,4,6,7,9,10; the left foot covers 1,2,4,5,7,8,10. Registered as two task IDs
-(see tasks/__init__.py) rather than flipping the KICK_FOOT module flag.
+Registered as two task IDs (see tasks/__init__.py), one per foot.
 """
 
 import dataclasses
+import math
 
 from mjlab.envs import ManagerBasedRlEnvCfg
 from mjlab.managers import CurriculumTermCfg, RewardTermCfg
 
 from mjlab_microduck.tasks import mdp as microduck_mdp
 from mjlab_microduck.tasks.microduck_ball_kick_env_cfg import (
+    STAND_Z,
     MicroduckBallKickRlCfg,
     make_microduck_ball_kick_env_cfg,
 )
 
-# Widest range the command is ever sampled from. Reaching 2.6 m/s is for a
-# board LONGER than today's rayuela (the current one needs ~1.8); the low end
-# is the hard part and the one that matters for casilla 1. Sampled
-# LOG-uniformly (see KickSpeedCommand._resample_command) so every octave gets
-# the same amount of experience.
-KICK_SPEED_RANGE = (0.25, 2.6)
+# Widest range the command is ever sampled from, LOG-uniformly so every octave
+# gets the same experience (the low end is the hard part, and the one casilla 1
+# needs). The ceiling was cut from 2.6 after a run where the exit speed
+# saturated around 1.76: unfillable commands taught the policy to throw itself
+# at them, falling during the kick at every command >= 0.80.
+KICK_SPEED_RANGE = (0.25, 1.8)
 
 # Opened in stages: the policy first learns the strengths it can already make,
 # then the extremes. Measured starting point: the previous policy leaves the
 # foot at 0.5-0.7 m/s for its softest kick, so stage 0 sits around that.
 KICK_SPEED_RANGE_STAGES = [
-    {"step": 0,         "range": (0.50, 1.50)},
-    {"step": 300 * 24,  "range": (0.40, 2.00)},
-    {"step": 600 * 24,  "range": (0.30, 2.40)},
+    {"step": 0,         "range": (0.50, 1.20)},
+    {"step": 300 * 24,  "range": (0.40, 1.50)},
+    {"step": 600 * 24,  "range": (0.30, 1.65)},
     {"step": 900 * 24,  "range": KICK_SPEED_RANGE},
 ]
 
-# Speed accuracy comes in two terms that trade places.
-#
-# LINEAR (ball_forward_velocity): min(fwd, tgt)/tgt. It is the bootstrap — it
-# pays from the very first touch, so the kick gets discovered — but it is a
-# PLATEAU: at or above target it pays full and nothing pulls the speed back
-# down. That plateau is why the trained policy answers a 0.30 command with a
-# 0.67 m/s ball.
-#
-# GAUSSIAN (ball_speed_gaussian): peaks only AT the command, with a std that
-# is a fraction of it. It is what actually buys a usable wide range, but on
-# its own it has no gradient before the kick exists (a still ball scores
-# exp(-8)). So: start on the linear term, hand over to the Gaussian.
+# Speed accuracy comes in two terms that trade places. The LINEAR one is the
+# bootstrap: it pays from the first touch so the kick gets discovered, but it
+# is a plateau above the target and nothing pulls the speed back down. The
+# GAUSSIAN peaks only AT the command and is what buys a usable wide range, but
+# has no gradient before the kick exists (a still ball scores exp(-8)).
 KICK_REWARD_WEIGHT = 12.0
 KICK_OVERSHOOT_WEIGHT = -4.0
 KICK_GAUSSIAN_WEIGHT = 12.0
@@ -93,16 +82,41 @@ KICK_GAUSSIAN_STAGES = [
     {"step": 1000 * 24, "weight": KICK_GAUSSIAN_WEIGHT},
 ]
 
-# Aiming, now on BOTH feet. The term is |tan(off-axis angle)| (see
-# ball_kick_aim_error), not lateral speed over the command: measured, the
-# error turns with the commanded strength (-20 deg at 0.30, +12 deg at 1.50),
-# so it is an angle problem and pricing it as an angle is what makes the
-# pressure identical at every strength.
-#
-# Ramped in rather than live from step 0: per AGENTS.md an attempt-tax active
-# while a hard skill is still being explored makes "do nothing" the argmax.
-# At full weight a 20 deg kick costs tan(20 deg) * 8 = 2.9 against the 12 of
-# the speed term — visible, but it can never beat not kicking.
+# Aiming, on BOTH feet, priced as |tan(off-axis angle)| rather than lateral
+# speed over the command: the error turns with the commanded strength (-20 deg
+# at 0.30, +12 deg at 1.50), so an angle is what makes the pressure identical
+# at every strength. Ramped in, per AGENTS.md — an attempt-tax live while a
+# hard skill is still being explored makes "do nothing" the argmax. At full
+# weight 20 deg costs tan(20 deg) * 8 = 2.9 against the speed term's 12.
+# Standing again once the kick is over — the state the deployment hands back
+# in. Before this term the policy ended EVERY kick at 41-45 deg of tilt and
+# stayed there, because nothing priced the end state (fell_over only fires at
+# 70 deg, and a per-step upright average over 5 s still pays for a lean).
+# Multiplicative, and gated to the late episode: the swing stays free, the
+# aftermath does not. Weight 6.0 matches the additive stand stack it has to
+# outvote (upright 2 + legs 2 + neck 1 + height 1) while staying under the
+# speed stack, so "kick at all" keeps winning.
+KICK_SETTLE_WEIGHT = 6.0
+KICK_SETTLE_AFTER_S = 1.5   # the kick swing is over well before this
+KICK_SETTLE_TILT_STD = 0.5    # rad; the 41 deg it parks at scores 0.13 —
+                              # visible but poor. 0.25 would score 3e-4, i.e.
+                              # no gradient at all out of today's behaviour.
+KICK_SETTLE_HEIGHT_STD = 0.03
+KICK_SETTLE_POSE_STD = 0.4
+# Ramped in like the others: a settle requirement live while the kick is still
+# being discovered just taxes every attempt.
+KICK_SETTLE_STAGES = [
+    {"step": 0,         "weight": 0.0},
+    {"step": 300 * 24,  "weight": 2.0},
+    {"step": 600 * 24,  "weight": 4.0},
+    {"step": 900 * 24,  "weight": KICK_SETTLE_WEIGHT},
+]
+
+# A lean this far over is a failed kick. The stock 70 deg let the policy park
+# at 41 deg for free; 50 deg keeps the swing's transient affordable while
+# making that parked lean one nudge from ending the episode.
+KICK_FELL_OVER_ANGLE_DEG = 50.0
+
 KICK_AIM_WEIGHT = -8.0
 KICK_AIM_STAGES = [
     {"step": 0,         "weight": 0.0},
@@ -152,6 +166,21 @@ def make_microduck_ball_kick_speed_env_cfg(
         params={"asset_name": "ball"},
     )
 
+    cfg.rewards["kick_settled_stand"] = RewardTermCfg(
+        func=microduck_mdp.kick_settled_stand,
+        weight=KICK_SETTLE_STAGES[0]["weight"],
+        params={
+            "after_s": KICK_SETTLE_AFTER_S,
+            "target_height": STAND_Z,
+            "height_std": KICK_SETTLE_HEIGHT_STD,
+            "tilt_std": KICK_SETTLE_TILT_STD,
+            "pose_std": KICK_SETTLE_POSE_STD,
+        },
+    )
+    cfg.terminations["fell_over"].params["limit_angle"] = math.radians(
+        KICK_FELL_OVER_ANGLE_DEG
+    )
+
     cfg.curriculum["kick_speed_range"] = CurriculumTermCfg(
         func=microduck_mdp.kick_speed_range_curriculum,
         params={"command_name": "twist", "range_stages": KICK_SPEED_RANGE_STAGES},
@@ -160,6 +189,7 @@ def make_microduck_ball_kick_speed_env_cfg(
         ("ball_forward_velocity", KICK_LINEAR_STAGES),
         ("ball_speed_gaussian", KICK_GAUSSIAN_STAGES),
         ("ball_aim", KICK_AIM_STAGES),
+        ("kick_settled_stand", KICK_SETTLE_STAGES),
     ):
         cfg.curriculum[f"{name}_weight"] = CurriculumTermCfg(
             func=microduck_mdp.reward_weight,

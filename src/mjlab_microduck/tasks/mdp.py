@@ -5926,6 +5926,67 @@ def ball_speed_gaussian_to_command(
     return torch.exp(-0.5 * err * err)
 
 
+def kick_settled_stand(
+    env: ManagerBasedRlEnv,
+    after_s: float = 1.5,
+    target_height: float = 0.115,
+    height_std: float = 0.03,
+    tilt_std: float = 0.5,
+    pose_std: float = 0.3,
+    joint_indices: Optional[list] = None,
+    asset_cfg: SceneEntityCfg = _DEFAULT_ASSET_CFG,
+) -> torch.Tensor:
+    """Product of Gaussians on (upright, trunk height, joint pose), paid ONLY
+    after ``after_s`` seconds of the episode. In [0, 1].
+
+    The deployment hands the robot back to the standing policy a couple of
+    seconds after triggering the kick, so what matters is the state AT THAT
+    MOMENT, not the average over the episode. Measured on the policy this term
+    was written for: it ends every kick parked at 41-45 deg of tilt and simply
+    stays there — ``fell_over`` only fires at 70 deg, and a per-step upright
+    Gaussian averaged over 5 s still pays most of its weight for a 41 deg
+    lean, so the lean was free. Handing over later does not help (the fall
+    just tracks the handover: 2.2 s -> 3.2 s -> 4.2 s).
+
+    MULTIPLICATIVE on purpose (AGENTS.md): an additive stand stack has a
+    compromise basin where a lean keeps ~70% of every term, which is exactly
+    the pose that was learned. A product collapses on any single deficient
+    factor, so there is no partial credit for "upright-ish".
+
+    The stds must be wide enough that the CURRENT policy scores visibly or
+    there is no gradient: at the 41 deg it parks at, tilt_std=0.5 rad gives
+    0.13 — small but climbable. A tempting 0.25 gives 3e-4, which is zero as
+    far as PPO is concerned, and nothing would ever move.
+
+    The time gate is a hard state gate, not a nudge: before ``after_s`` the
+    kick's transient is free (the swing has to be violent), after it nothing
+    but a real stand pays.
+    """
+    asset = env.scene[asset_cfg.name]
+    quat = asset.data.root_link_quat_w
+    qx, qy = quat[:, 1], quat[:, 2]
+    # cos(tilt) of the trunk's up axis; 1 = upright, 0 = on its side.
+    upright = (1.0 - 2.0 * (qx * qx + qy * qy)).clamp(-1.0, 1.0)
+    tilt = torch.arccos(upright)
+    f_tilt = torch.exp(-((tilt / tilt_std) ** 2))
+
+    z = torch.nan_to_num(
+        asset.data.root_link_pos_w[:, 2] - env.scene.terrain.env_origins[:, 2], nan=0.0
+    )
+    f_height = torch.exp(-(((z - target_height) / height_std) ** 2))
+
+    joint_pos = _servo_joint_pos(env, asset)
+    target = _servo_default_joint_pos(env, asset)
+    if joint_indices is not None:
+        joint_pos = joint_pos[:, joint_indices]
+        target = target[:, joint_indices]
+    err = torch.nan_to_num(joint_pos - target, nan=0.0)
+    f_pose = torch.exp(-((err / pose_std) ** 2).mean(dim=1))
+
+    late = (env.episode_length_buf.float() * env.step_dt) >= after_s
+    return torch.where(late, f_tilt * f_height * f_pose, torch.zeros_like(f_tilt))
+
+
 def kick_speed_range_curriculum(
     env: ManagerBasedRlEnv,
     env_ids: torch.Tensor,

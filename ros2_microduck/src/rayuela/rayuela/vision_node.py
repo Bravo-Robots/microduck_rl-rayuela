@@ -1,20 +1,14 @@
-"""Watches the angled_cam feed, rectifies it to a top-down view via the 4
-color fiducials, finds the ball there, and reports which casilla it lands on.
+"""Rectifies the angled_cam feed to a top-down view, finds the ball, and
+reports which casilla it lands on.
 
-Pipeline: detect the 4 known-color fiducial cylinders in the raw oblique
-frame (nearest-color match, not fragile per-color HSV tuning) and use their
-known world XY to compute a pixel(angled)->pixel(top-down canvas)
-homography once; warp the whole frame into that canvas (this is the "vista
-virtual ortogonal" — segmenting a rectified top-down image gives an
-undistorted, circular ball blob and an accurate centroid, unlike segmenting
-the raw oblique view and only transforming the resulting point). Ball
-detection then runs on the rectified canvas, where pixel->world is a fixed
-affine (board_geometry.canvas_to_world).
+The 4 known-colour fiducial cylinders give a one-off homography from the
+oblique frame to a metric top-down canvas, where pixel->world is a fixed
+affine (board_geometry.canvas_to_world) and the ball is an undistorted blob
+of known size. Detection runs on that canvas, never on the raw view.
 
 Landing detection is armed by a kick on /rayuela/behavior_cmd and resolves
-when the ball actually STOPS — its canvas centroid staying inside
-SETTLE_PIXEL_TOL for SETTLE_WINDOW_S — rather than after a fixed delay, so a
-hard kick and a soft one each report as soon as their ball comes to rest.
+when the ball actually STOPS (centroid inside SETTLE_PIXEL_TOL for
+SETTLE_WINDOW_S), so a hard kick and a soft one each report on arrival.
 """
 
 import array
@@ -36,6 +30,63 @@ from rayuela_msgs.msg import TargetCasilla
 # MuJoCo's shading gradient across the sphere.
 BALL_HSV_LOW = np.array([5, 120, 120])
 BALL_HSV_HIGH = np.array([25, 255, 255])
+
+# The duck is orange too and its geoms land INSIDE this window (measured hues
+# 9.6 and 20.1 against the ball's 16.5), so "the biggest orange blob" is not
+# the ball. Shape separates them; measured on the canvas, ball on casilla 1 —
+# the only square the duck's body can reach:
+#                          area    circ   SOLIDITY
+#     ball, near to far    1.19x   0.88     0.98
+#                          1.85x   0.68     0.96   (stretched by the homography)
+#     duck, best blob      0.44x   0.43     0.75
+#     duck FUSED with ball 2.01x   0.27     0.69
+# Solidity (area / convex-hull area) is the test: the far-end ball is a ~2:1
+# ellipse, which ruins circularity (0.68, one hundredth above a 0.65 gate —
+# that silently lost a ball on the cielo) but not convexity. The area window
+# has to be wide enough for that stretch, which lets the fused blob through on
+# size; solidity is what rejects it.
+BALL_EXPECTED_AREA_PX = math.pi * (
+    board_geometry.BALL_RADIUS_M * board_geometry.TOPDOWN_PIXELS_PER_METER
+) ** 2
+# Measured shape of every orange blob on the canvas (ball on casilla 1 /
+# casilla 6 / the cielo, duck standing and face-down):
+#                      area    circ   SOLIDITY   axis ratio
+#     ball casilla 1   1.19x   0.88     0.98        0.80
+#     ball casilla 6   1.41x   0.72     0.96        0.65
+#     ball cielo 2.50  1.85x   0.68     0.96        0.49
+#     duck, best blob  0.44x   0.43     0.75        0.54
+#     duck FUSED with
+#       the ball       2.01x   0.27     0.69        0.39
+#
+# The ball is NOT round at the far end: the homography stretches it into a
+# roughly 2:1 ellipse, and it grows to 1.85x its nominal area. Circularity
+# therefore drops to 0.68 out there, one hundredth above a 0.65 threshold —
+# that is what silently lost a ball resting on the cielo. An ellipse is still
+# CONVEX, though, so solidity (area / convex-hull area) does not care about the
+# stretch: worst ball 0.95, best non-ball 0.75. That gap is the test.
+#
+# The area window has to be wide enough for the far-end stretch (hence 2.5),
+# which also lets the fused blob through on size — solidity is what rejects it.
+BALL_AREA_RANGE = (0.5, 2.5)
+BALL_MIN_SOLIDITY = 0.85
+
+# FALLBACK for the fused case only. On the metric canvas the ball's radius is
+# known (14 px), which is what makes Hough usable without parameter fiddling.
+# Benchmarked against the contour rule over 4 duck poses x 4 ball positions:
+# as a REPLACEMENT it is worse — on grayscale it locks onto the near_left
+# fiducial (a circle of the same radius) even with no ball in view, and on the
+# mask it finds nothing on the far half of the board, whose edges the
+# rectification leaves too soft. As a FALLBACK it earns its place: on the one
+# case contours cannot do — duck lying on the ball, blobs fused — it recovers
+# the ball to 16 mm. Costs 5.2 ms vs 0.5, and only on frames that found
+# nothing. It keeps one false positive of its own, a circle inside the
+# standing duck's own orange at world (0.02, 0.14), so the result is only
+# accepted ON the board.
+BALL_HOUGH_PARAM1 = 120
+BALL_HOUGH_PARAM2 = 15
+BALL_HOUGH_RADIUS_SCALE = (0.8, 1.3)
+BALL_ON_BOARD_MIN_X = 0.30        # casilla 1's near edge
+BALL_ON_BOARD_MAX_ABS_Y = 0.45
 
 # Fiducial detection: any saturated colorful blob, then classified by
 # nearest RGB match against board_geometry.FIDUCIALS. The generic mask
@@ -59,7 +110,17 @@ SETTLE_MIN_SAMPLES = 5     # don't call it settled off one or two lucky frames
 # Give up if the ball never settles (kicked off the board, lost behind the
 # duck, never detected at all) instead of waiting forever.
 LANDING_TIMEOUT_S = 20.0
+# For the first moments after a kick the ball is still AT THE FOOT, fused with
+# the duck, so "no ball-shaped blob" is the expected answer and not worth a
+# warning. Measured: the ball is clear well inside a second and even the
+# softest kick has it stopped by ~2.2 s.
+BALL_WARN_GRACE_S = 2.0
 
+# How the rectified canvas is SHOWN and PUBLISHED: "horizontal" as built, or
+# "vertical" rotated 90 deg counter-clockwise (duck at the bottom, cielo at the
+# top). Purely a view — detection and every canvas<->world conversion run on
+# the unrotated canvas, so this cannot move a landing point.
+TOPDOWN_ORIENTATION = "horizontal"
 
 class RayuelaVisionNode(Node):
     def __init__(self):
@@ -78,8 +139,11 @@ class RayuelaVisionNode(Node):
         self.topdown_pub = self.create_publisher(Image, "/rayuela/topdown_camera/image_raw", 10)
         self.create_subscription(String, "/rayuela/behavior_cmd", self._on_behavior_cmd, 10)
 
-        self.vis_rectify_img = True  # show the rectified top-down canvas in a window for debugging
-        self.vis_raw_img = True  # show the raw angled camera feed in a window for debugging    
+        self.vis_rectify_img = True   # debug window with the rectified canvas
+        self.vis_raw_img = False      # debug window with the raw angled feed
+        
+        self._vertical_view = TOPDOWN_ORIENTATION == "vertical"
+        self.get_logger().info(f"Top-down view: {TOPDOWN_ORIENTATION}")
         self.create_subscription(Image, "/rayuela/angled_camera/image_raw", self._on_image, 10)
 
         self.get_logger().info("rayuela_vision_node ready")
@@ -136,18 +200,134 @@ class RayuelaVisionNode(Node):
         return True
 
     def _find_ball_pixel(self, frame_bgr: np.ndarray) -> tuple[float, float] | None:
+        """Centroid of the ball on the rectified canvas, or None.
+
+        Picks the most BALL-SHAPED orange blob, not the biggest one — see
+        BALL_MIN_SOLIDITY for why the biggest is often the duck. Returning None
+        when the duck is lying on the ball is the intended outcome: a fused
+        blob's centroid is not the ball's.
+        """
         hsv = cv2.cvtColor(frame_bgr, cv2.COLOR_BGR2HSV)
         mask = cv2.inRange(hsv, BALL_HSV_LOW, BALL_HSV_HIGH)
         contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-        if not contours:
+
+        best, best_solidity, rejected = None, 0.0, 0
+        for c in contours:
+            area = cv2.contourArea(c)
+            if area < 10:
+                continue
+            rejected += 1
+            ratio = area / BALL_EXPECTED_AREA_PX
+            if not (BALL_AREA_RANGE[0] <= ratio <= BALL_AREA_RANGE[1]):
+                continue
+            hull_area = cv2.contourArea(cv2.convexHull(c))
+            if hull_area <= 0:
+                continue
+            solidity = area / hull_area
+            if solidity < BALL_MIN_SOLIDITY or solidity <= best_solidity:
+                continue
+            m = cv2.moments(c)
+            if m["m00"] == 0:
+                continue
+            best_solidity = solidity
+            best = (m["m10"] / m["m00"], m["m01"] / m["m00"])
+            rejected -= 1
+
+        if best is not None:
+            return best
+
+        if rejected and self._awaiting_landing:
+            hough = self._find_ball_hough(mask)
+            if hough is not None:
+                return hough
+            if self._since_kick() > BALL_WARN_GRACE_S:
+                self.get_logger().warn(
+                    f"{rejected} orange blob(s) in view, none ball-shaped and no "
+                    f"circle recoverable (the duck is orange too, and may be "
+                    f"lying on the ball)",
+                    throttle_duration_sec=2.0,
+                )
+        return None
+
+    def _since_kick(self) -> float:
+        """Seconds since the kick that armed landing detection (inf if none)."""
+        if self._kick_stamp is None:
+            return float("inf")
+        return (self.get_clock().now() - self._kick_stamp).nanoseconds * 1e-9
+
+    def _find_ball_hough(self, mask: np.ndarray) -> tuple[float, float] | None:
+        """Last resort when the ball's blob is fused with the duck's.
+
+        Hough finds the ball's circular EDGE even where the two silhouettes
+        overlap, which no contour rule can do. Only trusted on the board — off
+        it lives Hough's own false positive.
+        """
+        radius = board_geometry.BALL_RADIUS_M * board_geometry.TOPDOWN_PIXELS_PER_METER
+        circles = cv2.HoughCircles(
+            cv2.GaussianBlur(mask, (5, 5), 1.5),
+            cv2.HOUGH_GRADIENT, dp=1, minDist=int(radius * 1.5),
+            param1=BALL_HOUGH_PARAM1, param2=BALL_HOUGH_PARAM2,
+            minRadius=int(radius * BALL_HOUGH_RADIUS_SCALE[0]),
+            maxRadius=int(radius * BALL_HOUGH_RADIUS_SCALE[1]),
+        )
+        if circles is None:
             return None
-        largest = max(contours, key=cv2.contourArea)
-        if cv2.contourArea(largest) < 10:
-            return None
-        m = cv2.moments(largest)
-        if m["m00"] == 0:
-            return None
-        return m["m10"] / m["m00"], m["m01"] / m["m00"]
+        for cx, cy, _r in circles[0]:
+            wx, wy = board_geometry.canvas_to_world(float(cx), float(cy))
+            if wx >= BALL_ON_BOARD_MIN_X and abs(wy) <= BALL_ON_BOARD_MAX_ABS_Y:
+                if self._since_kick() > BALL_WARN_GRACE_S:
+                    self.get_logger().info(
+                        f"Ball recovered by Hough at ({wx:.2f}, {wy:.2f}) — its "
+                        f"blob is fused with the duck's",
+                        throttle_duration_sec=2.0,
+                    )
+                return float(cx), float(cy)
+        return None
+
+    def _oriented(self, img: np.ndarray) -> np.ndarray:
+        """The canvas as it should be SHOWN (see TOPDOWN_ORIENTATION)."""
+        if not self._vertical_view:
+            return img
+        return cv2.rotate(img, cv2.ROTATE_90_COUNTERCLOCKWISE)
+
+    def _oriented_point(self, x: float, y: float, width: int) -> tuple[float, float]:
+        """A canvas point in the oriented image's coordinates.
+
+        Verified against cv2.rotate on a marked pixel: a 90 deg
+        counter-clockwise rotation of a ``width``-wide image sends (x, y) to
+        (y, width - 1 - x).
+        """
+        if not self._vertical_view:
+            return x, y
+        return y, width - 1 - x
+
+    def _show_rectified(self, canvas_bgr: np.ndarray, ball_px) -> None:
+        """Debug window: rectified canvas with the detected ball centroid."""
+        # Rotate FIRST, then draw: the overlay text has to read upright in the
+        # vertical view, and the marker is placed through the same transform.
+        vis = self._oriented(canvas_bgr)  # copies when rotating
+        if vis is canvas_bgr:
+            vis = canvas_bgr.copy()       # no tocar el canvas original
+        if ball_px is not None:
+            ox, oy = self._oriented_point(*ball_px, canvas_bgr.shape[1])
+            cx, cy = int(round(ox)), int(round(oy))
+            # World coordinates come from the UNROTATED point: the rotation is
+            # a view, and must never leak into the geometry.
+            wx, wy = board_geometry.canvas_to_world(*ball_px)
+            cv2.drawMarker(vis, (cx, cy), (0, 255, 0),
+                           cv2.MARKER_CROSS, 24, 2, cv2.LINE_AA)         # crosshair
+            cv2.circle(vis, (cx, cy), 4, (0, 0, 255), -1)                 # centre
+            cv2.putText(vis, f"px ({cx}, {cy})  world ({wx:.2f}, {wy:.2f})",
+                        (8, 20), cv2.FONT_HERSHEY_SIMPLEX, 1.0,
+                        (127,7,111), 1, cv2.LINE_AA)
+        else:
+            cv2.putText(vis, "ball: not detected", (8, 20),
+                        cv2.FONT_HERSHEY_SIMPLEX, 1.0, (0, 0, 255), 1, cv2.LINE_AA)
+        try:
+            cv2.imshow("Rayuela - Top-down (rectified)", vis)
+            cv2.waitKey(1)
+        except cv2.error:
+            pass  # headless mode, no GUI available
 
     def _on_image(self, msg: Image) -> None:
         if msg.encoding != "rgb8":
@@ -171,14 +351,10 @@ class RayuelaVisionNode(Node):
         canvas_bgr = cv2.warpPerspective(frame_bgr, self._homography, self._canvas_size)
         self._publish_topdown(canvas_bgr, msg.header)
 
-        if self.vis_rectify_img:
-            try:
-                cv2.imshow("Rayuela - Top-down (rectified)", canvas_bgr)
-                cv2.waitKey(1)
-            except cv2.error:
-                pass  # headless mode, no GUI available
-
         ball_px = self._find_ball_pixel(canvas_bgr)
+        if self.vis_rectify_img:
+            self._show_rectified(canvas_bgr, ball_px)
+
         if ball_px is None:
             # Check the give-up clock here too, not only in the tracker: a ball
             # that is never detected (kicked off the board, hidden behind the
@@ -279,7 +455,7 @@ class RayuelaVisionNode(Node):
         )
 
     def _publish_topdown(self, canvas_bgr: np.ndarray, header) -> None:
-        canvas_rgb = cv2.cvtColor(canvas_bgr, cv2.COLOR_BGR2RGB)
+        canvas_rgb = cv2.cvtColor(self._oriented(canvas_bgr), cv2.COLOR_BGR2RGB)
         height, width, _ = canvas_rgb.shape
         img_msg = Image()
         img_msg.header = header

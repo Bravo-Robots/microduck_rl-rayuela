@@ -20,9 +20,29 @@ from std_msgs.msg import Bool, String
 
 VEL_STEP_X = 0.1
 VEL_STEP_Y = 0.1
+# MEASURED on the walking policy (escena_rayuela.xml, command held 8-12 s,
+# net motion after the first 2 s). These are not preferences — below each
+# floor the duck simply does not move, and a command that does nothing looks
+# exactly like a frozen teleop.
+#
+# FORWARD: 0.20 -> 0.000 m/s, 0.25 -> 0.078, 0.30 -> 0.107, 0.50 -> 0.215.
 VEL_MAX_X = 0.3
 VEL_MAX_Y = 0.2
-VEL_MAX_ANG = 1.0
+# TURN IN PLACE: 0.60 -> 0.002 rad/s, 0.80 -> 0.002, 1.00 -> 0.008 (ten
+# degrees in eight seconds — this was the old value, and it is why turning
+# looked stuck), then a cliff: 1.20 -> 0.527, 1.50 -> 0.739, 2.00 -> 1.112.
+# 1.5 is past the trained command range (the velocity task samples ang_vel_z
+# in +/-1.0), so this is extrapolation — but it is the same 1.5 the control
+# node already uses for every in-place turn, for the same measured reason.
+# Turning WHILE walking is a different regime and works from ~0.4.
+VEL_MAX_ANG = 1.5
+# BACKWARD is NOT a threshold problem, it is a gap in the policy: -0.10 to
+# -0.30 all give exactly 0.000 m/s, and only at -0.40 (the edge of the trained
+# range, lin_vel_x in +/-0.4) does it start to move — at 0.08 m/s while veering
+# 1.5 m sideways over 10 s, i.e. it curves more than it reverses. Commanding
+# the trained limit at least makes the key do something; walking backwards
+# properly needs training, not a bigger number.
+VEL_MIN_X = -0.4
 
 
 class TerminalInput:
@@ -104,7 +124,7 @@ class RayuelaTeleopKeyboard(Node):
         if key == "up":
             self.vel_cmd[0] = VEL_MAX_X
         elif key == "down":
-            self.vel_cmd[0] = -VEL_MAX_X
+            self.vel_cmd[0] = VEL_MIN_X
         elif key == "left":
             self.vel_cmd[2] = VEL_MAX_ANG
         elif key == "right":

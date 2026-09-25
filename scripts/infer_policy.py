@@ -113,6 +113,22 @@ BODY_CMD_MAX_ANGLE = math.radians(30)  # ±30°
 # reset_ball_in_front_of_foot params: ball center in the robot's yaw frame).
 BALL_OFFSET_X = 0.09
 BALL_OFFSET_ABS_Y = 0.042
+
+# Fall watchdog for the SIT posture. The sitstand policy sits, holds the sit
+# and stands back up — but it is not a recovery policy, and MEASURED, once the
+# duck is knocked over while seated it stays there: 8 s later it is still at
+# 63 deg of tilt with the trunk at 59 mm. Handing the same fall to
+# alpha_standing instead ends at 4.8 deg and 116 mm, i.e. standing. So a fall
+# in sit has to give control back to the standing policy; toggling sit off is
+# NOT enough, because with a sitstand policy that keeps the same session
+# running (see toggle_sit).
+#
+# The threshold has a lot of room: a healthy sit/stand cycle peaks at 5.8 deg
+# of trunk tilt (measured over sitting down, holding and rising), and a 28 deg
+# shove is recovered by the sit policy on its own, so 45 deg only ever fires
+# on a real topple. The confirm time keeps a transient from tripping it.
+SIT_FALL_TILT_RAD = math.radians(45.0)
+SIT_FALL_CONFIRM_S = 0.5
 BALL_RADIUS = 0.035
 
 # Default pose used by the policy (legs flexed, standing position)
@@ -284,6 +300,7 @@ class PolicyInference:
         #    holds, and stands back up — Y just flips the flag.
         self.sit_session = None
         self.sit_mode = False
+        self._sit_fall_s = 0.0
         self.is_sitstand = False
         if sit_onnx_path and sitstand_onnx_path:
             raise ValueError("Provide only one of --sit / --sitstand")
@@ -793,6 +810,44 @@ class PolicyInference:
         foot = behavior.split("_")[1]
         print(f"Ball placed at ({bx:.3f}, {by:.3f}) in front of the {foot} foot")
 
+    def trunk_tilt_rad(self) -> float:
+        """Angle between the trunk's up axis and world up."""
+        adr = self._trunk_qpos_adr
+        qw, qx, qy, qz = (float(v) for v in self.data.qpos[adr + 3:adr + 7])
+        up_z = max(-1.0, min(1.0, 1.0 - 2.0 * (qx * qx + qy * qy)))
+        return math.acos(up_z)
+
+    def update_sit_fall_watchdog(self, dt: float):
+        """Hand a fallen-while-sitting duck back to the standing policy.
+
+        See SIT_FALL_TILT_RAD. Without this the duck lies on its side under a
+        policy that cannot right itself, and nothing else notices: the control
+        node sees the fall but only holds cmd_vel at zero, which is the right
+        move for alpha_standing and useless for sitstand.
+        """
+        if not self.sit_mode or self.sit_session is None:
+            self._sit_fall_s = 0.0
+            return
+        if self.trunk_tilt_rad() > SIT_FALL_TILT_RAD:
+            self._sit_fall_s += dt
+        else:
+            self._sit_fall_s = 0.0
+        if self._sit_fall_s < SIT_FALL_CONFIRM_S:
+            return
+
+        self._sit_fall_s = 0.0
+        self.sit_mode = False
+        self.vel_cmd = np.zeros(3, dtype=np.float32)
+        if self.standing_session:
+            self.current_policy, self.ort_session = "standing", self.standing_session
+        elif self.walking_session:
+            self.current_policy, self.ort_session = "walking", self.walking_session
+        else:
+            return  # nothing that can recover; leave it as it was
+        self._update_command()
+        print(f"Fell over while sitting ({math.degrees(self.trunk_tilt_rad()):.0f} deg "
+              f"of tilt) → {self.current_policy} policy takes over to get up")
+
     def update_behavior(self, dt: float):
         """Advance the behavior timer; hand back to walking/standing when done."""
         if self.behavior_mode is None:
@@ -805,7 +860,14 @@ class PolicyInference:
         name = self.behavior_mode
         self.behavior_mode = None
         self.vel_cmd = np.zeros(3, dtype=np.float32)
-        if self.walking_session:
+        if self.walking_session and self.standing_session:
+            # The command was just zeroed, so let the normal switch decide —
+            # which with a zero command means STANDING. Handing a kick or a
+            # roulade straight back to the walking policy put the duck in a
+            # gait with nothing to walk towards, and the deployment then had
+            # to wait for the next command to fall back to standing.
+            self._update_policy_session()
+        elif self.walking_session:
             self.current_policy = "walking"
             self.ort_session = self.walking_session
         elif self.standing_session:
@@ -1408,6 +1470,7 @@ def main():
 
                 policy.update_ground_pick_phase(actual_dt)
                 policy.update_behavior(actual_dt)
+                policy.update_sit_fall_watchdog(actual_dt)
 
                 if policy_enabled:
                     action = policy.infer()

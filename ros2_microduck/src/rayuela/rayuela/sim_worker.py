@@ -61,7 +61,7 @@ BAM_CURRENT_LIMIT = 0.0  # <=0 -> None (no firmware current limit)
 # and lowering it to EXIT while walking turns that one threshold into a proper
 # Schmitt trigger: it takes a deliberate command to start moving, and a
 # deliberate stop to settle, with no chatter in between.
-SWITCH_ENTER = 0.15   # command magnitude needed to START walking
+SWITCH_ENTER = 0.1   # command magnitude needed to START walking
 SWITCH_EXIT = 0.05    # must drop below this to fall back to standing
 
 
@@ -259,6 +259,11 @@ class SimWorker:
                 # completion — it only travelled 0.14m instead of 0.57m.
                 self.policy.update_ground_pick_phase(self.control_dt)
                 self.policy.update_behavior(self.control_dt)
+                # Sim time, like update_behavior: a fall while sitting has to
+                # hand control back to the standing policy, or the duck lies
+                # there under a policy that cannot get up (see
+                # infer_policy.SIT_FALL_TILT_RAD).
+                self.policy.update_sit_fall_watchdog(self.control_dt)
 
                 action = self.policy.infer()
                 self.policy.apply_action(action)

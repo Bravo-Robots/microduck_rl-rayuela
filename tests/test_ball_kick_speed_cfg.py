@@ -9,6 +9,10 @@ import torch
 from mjlab_microduck.tasks import mdp
 from mjlab_microduck.tasks.microduck_ball_kick_speed_env_cfg import (
     KICK_AIM_STAGES,
+    KICK_FELL_OVER_ANGLE_DEG,
+    KICK_SETTLE_AFTER_S,
+    KICK_SETTLE_STAGES,
+    KICK_SETTLE_TILT_STD,
     KICK_GAUSSIAN_STAGES,
     KICK_GAUSSIAN_STD,
     KICK_LINEAR_STAGES,
@@ -53,9 +57,8 @@ def test_cfg_builds_per_foot_with_speed_command(foot, sign):
 
 def test_speed_range_is_positive_and_spans_the_board():
     lo, hi = KICK_SPEED_RANGE
-    # Measured in escena_rayuela.xml: 0.3 m/s -> casilla 1, ~1.75 m/s -> cielo,
-    # and headroom above that for a longer board.
-    assert 0.0 < lo <= 0.3 and hi >= 2.5
+    # Measured in escena_rayuela.xml: 0.3 m/s -> casilla 1, ~1.75 m/s -> cielo.
+    assert 0.0 < lo <= 0.3 and hi >= 1.75
 
 
 def test_kick_rewards_are_command_relative_with_correct_signs():
@@ -301,3 +304,110 @@ def test_sampling_is_log_uniform_so_every_octave_gets_data():
     soft = float((speed < 0.5).float().mean())
     assert 0.25 < soft < 0.40
     assert torch.all(fake.vel_command_b[:, 1:] == 0.0)
+
+
+# ── standing again once the kick is over ─────────────────────────────────────
+
+def _fake_robot_env(tilt_deg, z, t_s, n_joints=14, joint_err=0.0):
+    """Enough of an env for kick_settled_stand: a trunk at a given tilt."""
+    n = len(tilt_deg)
+    quat = torch.zeros(n, 4)
+    quat[:, 0] = 1.0
+    for i, deg in enumerate(tilt_deg):
+        half = math.radians(deg) / 2.0
+        quat[i, 0] = math.cos(half)
+        quat[i, 1] = math.sin(half)  # roll about x
+    # _servo_joint_pos resolves the non-passive joints through find_joints;
+    # on a plain model that is every joint, in order.
+    robot = SimpleNamespace(
+        find_joints=lambda pattern: (list(range(n_joints)), None),
+        data=SimpleNamespace(
+        root_link_quat_w=quat,
+        root_link_pos_w=torch.tensor([[0.0, 0.0, zz] for zz in z]),
+        joint_pos=torch.full((n, n_joints), joint_err),
+        default_joint_pos=torch.zeros(n, n_joints),
+        ),
+    )
+    class _Scene(dict):
+        terrain = SimpleNamespace(env_origins=torch.zeros(n, 3))
+
+    return SimpleNamespace(
+        num_envs=n, device="cpu",
+        scene=_Scene(robot=robot),
+        episode_length_buf=torch.tensor([int(tt / 0.02) for tt in t_s]),
+        step_dt=0.02,
+    )
+
+
+def _settled(env):
+    return mdp.kick_settled_stand(
+        env, after_s=KICK_SETTLE_AFTER_S, target_height=0.115,
+        tilt_std=KICK_SETTLE_TILT_STD,
+    )
+
+
+def test_settle_pays_nothing_during_the_swing():
+    """The kick transient must stay free, or the attempt itself gets taxed."""
+    early = _fake_robot_env([0.0], [0.115], [KICK_SETTLE_AFTER_S - 0.1])
+    late = _fake_robot_env([0.0], [0.115], [KICK_SETTLE_AFTER_S + 0.1])
+    assert float(_settled(early)) == 0.0
+    assert float(_settled(late)) > 0.9
+
+
+def test_settle_collapses_on_the_lean_the_policy_actually_learned():
+    """41 deg is what the 2000-iteration run parks at; it must score poorly
+    but NOT zero, or there is no gradient out of it."""
+    env = _fake_robot_env([0.0, 41.0, 90.0], [0.115] * 3, [3.0] * 3)
+    out = _settled(env)
+    assert float(out[0]) > 0.9
+    assert 0.05 < float(out[1]) < 0.30
+    assert float(out[2]) < 0.01
+
+
+def test_settle_is_multiplicative_so_one_bad_factor_kills_it():
+    """The additive stack's failure mode: 70% of every term via a compromise."""
+    upright_but_low = _fake_robot_env([0.0], [0.06], [3.0])
+    tall_but_tilted = _fake_robot_env([41.0], [0.115], [3.0])
+    # Perfectly upright, perfect pose — and it still collapses to a few
+    # percent because one factor is wrong. That is the whole point.
+    assert float(_settled(upright_but_low)) < 0.05
+    assert float(_settled(tall_but_tilted)) < 0.30
+
+
+def test_settle_is_bounded_and_positive():
+    env = _fake_robot_env([0.0, 20.0, 41.0, 120.0], [0.115, 0.11, 0.1, 0.05], [3.0] * 4)
+    out = _settled(env)
+    assert torch.all(out >= 0.0) and torch.all(out <= 1.0)
+
+
+@pytest.mark.parametrize("foot", ["left", "right"])
+def test_cfg_wires_the_settle_term_with_its_ramp(foot):
+    cfg = make_microduck_ball_kick_speed_env_cfg(kick_foot=foot)
+    term = cfg.rewards["kick_settled_stand"]
+    assert term.func is mdp.kick_settled_stand
+    assert term.weight == 0.0                      # ramped in, not live at step 0
+    assert "kick_settled_stand_weight" in cfg.curriculum
+    weights = [st["weight"] for st in KICK_SETTLE_STAGES]
+    assert weights == sorted(weights) and weights[-1] > 0
+    # It has to outvote the additive stand stack it replaces the job of.
+    additive = sum(cfg.rewards[n].weight for n in
+                   ("upright", "pose_stand_legs", "pose_stand_neck", "height_stand"))
+    assert weights[-1] >= additive
+    # ...but never out-shout the kick itself.
+    assert weights[-1] < cfg.rewards["ball_forward_velocity"].weight
+
+
+@pytest.mark.parametrize("foot", ["left", "right"])
+def test_falling_over_is_called_earlier_than_the_stock_70_deg(foot):
+    cfg = make_microduck_ball_kick_speed_env_cfg(kick_foot=foot)
+    angle = math.degrees(cfg.terminations["fell_over"].params["limit_angle"])
+    assert abs(angle - KICK_FELL_OVER_ANGLE_DEG) < 1e-6
+    # Tighter than stock, but still above the 41-45 deg the policy parks at,
+    # so the lean ends the episode only once it gets any worse.
+    assert 45.0 < angle < 70.0
+
+
+def test_range_ceiling_is_back_inside_what_the_ball_can_actually_do():
+    # Measured saturation of the ball's exit speed: ~1.76 m/s.
+    assert KICK_SPEED_RANGE[1] <= 1.8
+    assert all(st["range"][1] <= KICK_SPEED_RANGE[1] for st in KICK_SPEED_RANGE_STAGES)

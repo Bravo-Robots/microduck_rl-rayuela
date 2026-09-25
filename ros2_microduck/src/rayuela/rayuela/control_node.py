@@ -1,185 +1,130 @@
-"""Walks the duck to the center of whatever casilla vision_node reports.
+"""Walks the duck to the centre of whatever casilla vision_node reports.
 
-Simple go-to-point controller on ground-truth duck pose (published by
-sim_node — a real robot would swap this input for its own odometry node,
-out of scope here): turn to face the target, then walk forward, capped at
-the walking policy's own velocity limits. Stops within tolerance. No
-automatic kick triggering (MVP scope) — that stays a manual pub or
-teleop_keyboard.
+Go-to-point controller on ground-truth duck pose from sim_node (a real robot
+would swap that input for its own odometry). ``/rayuela/go_home`` (Bool true)
+overrides the active target and sends the duck back to HOME.
 
-A `/rayuela/go_home` (Bool, data=true) message overrides whatever casilla
-target is active and sends the duck to board_geometry.HOME_POSITION — the
-light-purple start_spot marker, which is always where the duck starts and
-must return to.
+Three rules shape everything below, each measured:
 
-Stability rules, each learned from watching this fall over:
-  - The walking policy was trained on commands that are held roughly
-    constant for whole resampling intervals (seconds), not recomputed every
-    tick. A closed-loop steering law that jumps discontinuously (e.g. an
-    if/else that snaps from "turn in place" to "walk+turn" the instant
-    heading error crosses a threshold) or has no rate limit feeds it a much
-    noisier, faster-changing command than anything in training — so both
-    the linear/angular blend below and the published cmd_vel are smoothed.
-  - There is no "stand up from the ground" policy in policies-v1 (alpha_
-    ground_pick picks something up, it isn't a fall recovery). So if the
-    duck is fallen (checked via trunk tilt from duck_pose, not just height),
-    the only honest thing to do is stop commanding it and wait — NOT keep
-    walking a fallen robot into the ground — until it's upright again
-    (recovered by a person, teleop, or a future recovery policy).
-  - PolicyInference.current_policy (mirrored here over /rayuela/current_policy
-    by sim_node/bridge_node) is the sim's authoritative state — "walking",
-    "standing", "sit", "ground_pick", "slope", or a behavior name
-    ("kick_left", "kick_right", "roulade"). A steering command only means
-    something while the duck is "standing" (about to start — a big-enough
-    vel_cmd is exactly what PolicyInference._update_policy_session switches
-    on) or "walking" (already going); it CANNOT mean "walking exclusively",
-    since that would deadlock — nothing would ever be allowed to send the
-    command that flips standing -> walking in the first place. Mid-kick,
-    sitting, ground_pick, or slope mode, a steering command wouldn't be
-    honored anyway and could only interfere, so this node sends an explicit
-    zero Twist there instead of a stale/guessed non-zero one.
+* **The gait has dead zones.** Commands the duck cannot act on look exactly
+  like a frozen controller, so every command here is bang-bang: at or above a
+  measured floor, or a clean zero. Tapering to zero is what made it circle
+  near the target instead of arriving.
+* **There is no fall-recovery policy.** ``alpha_standing`` rights itself, so a
+  fallen duck gets zero commands and time, never a command into the ground.
+* **``current_policy``** (mirrored from the sim) is authoritative. Steering
+  only means something in ``AMBULATORY_POLICY_STATES``; anywhere else this
+  node publishes an explicit zero.
 """
 
 import math
 
 import rclpy
 from geometry_msgs.msg import PoseStamped, Twist
+from rclpy.duration import Duration
 from rclpy.node import Node
 from std_msgs.msg import Bool, String
 
 from rayuela import board_geometry
 from rayuela_msgs.msg import TargetCasilla
 
+CONTROL_DT_S = 0.05
 POS_TOLERANCE_M = 0.04
-# MEASURED dead zone: alpha_walking produces no net forward motion below
-# ~0.3 m/s commanded — 0.15 and 0.20 both march in place (0.001 m/s over 10s
-# of sim), 0.30 gives 0.092 m/s and 0.40 gives 0.151 m/s. Training marks a
-# fraction of envs as standing (is_standing_env in mdp.py), so the policy
-# learned to hold still rather than step for small commands. Keep this at
-# 0.3 or above, and never taper lin_vel down into the dead zone on approach —
-# the duck would simply stop short of the target and never arrive.
 MAX_LIN_VEL = 0.5
 MAX_ANG_VEL = 2.0
-# Taper lin_vel to 0 as distance -> POS_TOLERANCE_M inside this radius, so the
-# duck settles into the tolerance circle instead of repeatedly overshooting
-# it at full speed and oscillating around the target (go_home path only —
-# see the casilla state machine below for the other case).
-SLOWDOWN_RADIUS_M = 0.3
+MIN_ANG_VEL = 0.4
 
-CONTROL_DT_S = 0.05  # matches self.timer period below
-# Per-tick change caps on the published cmd_vel, so it ramps rather than
-# jumps — the walking policy expects a roughly-held setpoint, not a value
-# that can flip between "0" and "max" between two 50ms control steps.
-
-# Casilla approach is a 3-stage state machine, not the continuous go-to-point
-# law above: walk mostly-straight at fixed speed, then once close switch to
-# turning in place to face the casilla center exactly, then hand off to the
-# roulade behavior to actually land on it.
-#   "straight": lin_vel fixed at MAX_LIN_VEL, only a gentle (STRAIGHT_KP)
-#     heading nudge — deliberately not the aggressive TURN_KP correction, so
-#     the approach reads as walking straight rather than curving in.
-#   "orient": turn in place (lin_vel=0) with TURN_KP until facing the casilla
-#     center within ROULADE_ALIGN_TOLERANCE_RAD.
-#   "roulade_wait": behavior_cmd "roulade" published once, cmd_vel held at
-#     zero (also true anyway once current_policy flips to "roulade" — see
-#     AMBULATORY_POLICY_STATES below — but held explicitly here too to cover
-#     the tick or two before that topic update lands) until the roulade
-#     finishes (current_policy leaves "roulade" again) or ROULADE_WAIT_TIMEOUT_S
-#     elapses with it never starting (e.g. another behavior was already
-#     running), then back to "straight" to re-approach.
-STRAIGHT_KP = 1.5
-# Small on purpose, current focus: get the duck to the target without
-# falling, and the rotational twist doesn't need to be aggressive here —
-# 2.0 was producing a sharp proportional response to heading error;
-# tune back up once arrival is reliable.
-TURN_KP = 1.5
-# Derivative gain on the heading error. Pure P saturated MAX_ANG_VEL for most
-# of a big turn and then overshot past zero error and came back — the "it just
-# keeps spinning" symptom. The D term bleeds the command off as the error
-# closes. There is no yaw-rate feedback to use (duck_pose is a PoseStamped,
-# pose only), so the rate is the wrapped tick-to-tick difference of the error,
-# EMA-filtered: at 20Hz the raw difference is noisy enough to fight the P term.
-TURN_KD = 0.5
-HEADING_D_FILTER = 0.3   # EMA weight on the new sample (1.0 = no filtering)
-# Linear PD, used inside SLOWDOWN_RADIUS_M. WALK_KP * SLOWDOWN_RADIUS_M is the
-# command at the edge of the circle; WALK_KD brakes early when closing fast
-# (the error rate is the closing speed, negative while approaching).
-WALK_KP = 1.5
-WALK_KD = 0.8
-WALK_D_FILTER = 0.3
-# THE floor that makes this work: below ~0.3 m/s commanded the gait produces
-# no net motion at all (0.15 and 0.20 both measured 0.001 m/s). A taper that
-# fades smoothly to zero therefore spends its last 15cm issuing commands the
-# duck cannot act on, while the heading PD keeps steering — the duck circles
-# in place instead of arriving. So the linear command is effectively binary:
-# either >= this floor, or a clean zero once inside POS_TOLERANCE_M.
-WALK_MIN_VEL = 0.11
-# MEASURED forward travel of one roulade, from a settled stand: +0.559 m in
-# scene_ball.xml and +0.567 m in escena_rayuela.xml — the two scenes agree, so
-# the roll itself is scene-independent. (An earlier "it goes 0.24 m BACKWARD"
-# reading was an artifact: the ball used to spawn at the right foot, inside
-# the roll path, and the duck bounced off it. See pelota_rayuela.xml.)
-ROULADE_ROLL_DISTANCE_M = 0.57
-# Fire the roulade only from roughly one roll-length out, so it LANDS on the
-# casilla instead of overshooting it. Triggering at the old ORIENT_RADIUS_M
-# (0.4 m) overshot by ~0.14 m, and since that left the duck outside
-# POS_TOLERANCE_M it just rolled again — oscillating past the target forever.
-# Outside this band the duck simply walks, which also closes out whatever the
-# roll leaves over.
-ROULADE_TRIGGER_BAND_M = 0.07
-ROULADE_ALIGN_TOLERANCE_RAD = math.radians(5.0)
-# MEASURED: turning in place (vx=0) is dead below ~1.5 rad/s commanded. At
-# 0.4 and 0.8 the duck achieves 0.011 and 0.018 rad/s — 3-6 degrees in SIX
-# seconds — while 1.5 achieves 0.77 rad/s. (Turning WHILE walking is a
-# different story: 0.4 commanded already gives 0.175 rad/s.) So an in-place
-# turn has to be commanded bang-bang at this magnitude; a proportional
-# ang_vel = kp * heading_error stalls the moment the error shrinks, which is
-# exactly why _rotate_home never reached its tolerance and left _go_home
-# latched forever, blocking every later casilla target.
+# ── Measured gait limits ────────────────────────────────────────────────────
+# Forward, holding a constant vx for 8 s (escena_rayuela.xml):
+#     cmd 0.08-0.20 -> 0.000 m/s | 0.25 -> 0.078 | 0.30 -> 0.107 | 0.50 -> 0.215
+# So WALK_MIN_VEL must clear BOTH the 0.20 dead zone and sim_worker's
+# SWITCH_ENTER (0.15), below which the sim never leaves the standing policy.
+WALK_MIN_VEL = 0.30
+# Turning IN PLACE (vx=0): 0.4 -> 0.011 rad/s, 0.8 -> 0.018, 1.5 -> 0.77. An
+# in-place turn is therefore bang-bang at 1.5; a proportional command stalls
+# as the error shrinks and the branch never exits (this froze _rotate_home).
+# Turning WHILE walking is a different regime and works from ~0.4.
 TURN_IN_PLACE_CMD = 1.5
-# At the achieved ~0.77 rad/s one 50ms control tick covers ~2.2 deg, so a
-# tolerance tighter than that just makes it hunt back and forth.
-TURN_IN_PLACE_TOL_RAD = math.radians(2.0)
+TURN_IN_PLACE_TOL_RAD = math.radians(2.0)  # ~1 tick of travel at 0.77 rad/s
+
+# ── Heading PD (steering while walking only) ────────────────────────────────
+TURN_KP = 1.5
+TURN_KD = 0.4
+HEADING_D_FILTER = 0.3
+# The P and D terms run on a FILTERED error: walking at 0.5 the trunk yaw
+# carries +/-4.1 deg of oscillation at ~2.6 Hz (the gait's step frequency,
+# unavoidable). Sampled at 20 Hz the D term differentiates it and pumps the
+# command at step rate. This filter sits below 2.6 Hz; it costs ~0.2 s of lag.
+HEADING_ERR_FILTER = 0.25
+# Small errors command a clean zero. The old law used ONLY the D term under
+# 15 deg — a pure differentiator whose entire output was that oscillation, and
+# which left 5-15 deg with no restoring action (the duck drifted +70 deg in
+# 10 s of walking straight).
+HEADING_DEADBAND_RAD = math.radians(5.0)
+# Rate limit on the published angular command: 12 rad/s^2 -> 3. Measured over
+# one trajectory it cuts the mean tick-to-tick jump 0.078 -> 0.029 rad/s and
+# sign changes 7 -> 3 at the same mean magnitude (1.53 -> 1.52). Not applied to
+# the linear command, which is binary by design.
+ANG_SLEW_PER_TICK = 0.15
+
+# ── Approach geometry ───────────────────────────────────────────────────────
+# Badly misaligned: turn in place until facing the target again.
+ALIGN_TURN_ENTER_RAD = math.radians(30.0)
+ALIGN_TURN_EXIT_RAD = math.radians(5.0)
+# Inside this radius the bearing is ill-conditioned (a few cm of lateral error
+# is tens of degrees), so _final_approach alternates turn-in-place and walking
+# straight with NO steering, with hysteresis between the two.
+FINAL_APPROACH_M = 0.3
+FINAL_TURN_ENTER_RAD = math.radians(20.0)
+FINAL_TURN_EXIT_RAD = math.radians(8.0)
+
+# ── Roulade finish ──────────────────────────────────────────────────────────
 ENABLE_ROULADE_FINISH = True
-# Once a roulade starts, treat the duck as "mid-trick" for at least this long
-# REGARDLESS of what current_policy says. PolicyInference hands the roulade
-# back to standing/walking after its own roulade_duration (2.0s, "~the roll
-# itself"), but the duck is still tumbling at that moment — without this latch
-# the tilt check below immediately reads the tumble as a fall, latches
-# _was_fallen and holds control hostage through the settle. The latch only
-# governs THIS node's fall detection and commands; it cannot postpone
-# PolicyInference's internal 2s handoff (that lives in sim_node/sim_worker).
+# Measured forward travel of one roll from a settled stand: +0.559 m in
+# scene_ball.xml, +0.567 m in escena_rayuela.xml — scene-independent.
+ROULADE_ROLL_DISTANCE_M = 0.57
+# Fire when the roll would LAND ON the casilla, not when the distance matches
+# the roll length: a casilla is 0.30 m long, and casilla 1 sits 0.48 m from
+# HOME, already too close to ever match 0.57 m. Tolerance = how far from the
+# centre the landing may be.
+ROULADE_LANDING_TOLERANCE_M = 0.12
+ROULADE_ALIGN_TOLERANCE_RAD = math.radians(5.0)
+# Backing up when closer than one roll-length. Reverse is the weakest thing
+# this gait does: 0.000 m/s at -0.30, ~0.08 m/s at -0.40 while veering. So it
+# is capped in distance and time, and on failure the roll is dropped for this
+# target and the duck walks in. The cap covers every start from 0.31 m out.
+REVERSE_VEL = -0.4
+REVERSE_MAX_M = 0.20
+REVERSE_TIMEOUT_S = 5.0
+REVERSE_EXIT_TOLERANCE_M = 0.06
+# Stand still before turning and before rolling: the in-place turn fights
+# residual motion, and the roll launches from whatever pose it finds. These
+# publish explicit zeros across ticks — NEVER time.sleep, which blocks the
+# single-threaded executor while the sim keeps acting on the last command (in
+# "orient", a 1.5 rad/s spin: one second of sleep adds ~42 deg and destroys
+# the alignment it was meant to protect).
+REVERSE_SETTLE_S = 1.0
+ROULADE_PRE_SETTLE_S = 1.0
+# The roulade hands back to standing after 2.0 s while the duck is still
+# tumbling, so hold "mid-trick" longer than that or the tilt check reads the
+# tumble as a fall. The wait timeout must stay above the hold.
 ROULADE_HOLD_S = 4.0
-# Must stay above ROULADE_HOLD_S, or the "roulade never started" bailout in
-# _run_casilla_approach fires while the latch is still legitimately held.
 ROULADE_WAIT_TIMEOUT_S = 8.0
 
-# Trunk tilt (angle between the body's up axis and world-up) beyond which
-# the duck is considered fallen, not just leaning into a turn.
+# ── Fall handling ───────────────────────────────────────────────────────────
 FALL_TILT_RAD = math.radians(60)
-# Recovery from a real fall (measured: alpha_standing rights itself from
-# lying face-down in ~6-8s, but NOT monotonically — tilt can dip under 60deg
-# then swing back up past it mid-recovery before finally settling). Clearing
-# "_was_fallen" the instant tilt first dips below FALL_TILT_RAD was resuming
-# real steering commands while the duck was still mid-recovery and
-# unstable — interrupting it and often causing another fall. Instead,
-# require tilt to stay under this MUCH stricter threshold continuously for
-# RECOVERY_SETTLE_S before resuming control.
+# alpha_standing rights itself from face-down in ~6-8 s, but NOT monotonically:
+# tilt dips under 60 deg and swings back past it mid-recovery. So resume only
+# after it holds a much stricter angle continuously, or the node interrupts the
+# recovery and causes another fall.
 RECOVERY_SETTLE_RAD = math.radians(20)
 RECOVERY_SETTLE_S = 1.5
 
-# Steering commands are meaningful in these two states only: "standing" is
-# the pre-walk state a big-enough vel_cmd switches OUT of (blocking it here
-# would deadlock — nothing could ever start a walk), "walking" is the gait
-# actually running. Every other state (sit/ground_pick/slope/a behavior name
-# like kick_left) is busy doing something a cmd_vel can't steer.
+# Steering only means something here. "standing" must be included: it is the
+# state a big-enough command switches OUT of, so blocking it would deadlock.
 AMBULATORY_POLICY_STATES = ("standing", "walking")
-
-# Behaviors that are SUPPOSED to tip the trunk past FALL_TILT_RAD as part of
-# the trick (roulade is a barrel roll) — exempt from fall detection, and
-# don't early-return past the roulade_wait bookkeeping in
-# _run_casilla_approach, or it can never observe current_policy=="roulade"
-# to know the trick actually ran.
+# Tricks that are SUPPOSED to tip the trunk past FALL_TILT_RAD — exempt from
+# fall detection, and they must still reach the roulade_wait bookkeeping.
 DYNAMIC_BEHAVIOR_STATES = ("kick_left", "kick_right", "roulade")
 
 
@@ -204,10 +149,20 @@ class RayuelaControlNode(Node):
         self._was_fallen = False
         self._pd_prev_err = 0.0
         self._pd_err_rate = 0.0
+        self._pd_err_filt = 0.0
         self._pd_last_t = None
-        self._walk_prev_dist = 0.0
-        self._walk_dist_rate = 0.0
-        self._walk_last_t = None
+        # Last angular command actually published (see ANG_SLEW_PER_TICK).
+        self._last_ang_cmd = 0.0
+        self._final_turning = False
+        self._aligning = False
+        self._reversing = False
+        self._reverse_start = None
+        self._reverse_start_error = 0.0
+        self._settle_until = None
+        # "No (more) rolling for this target": set by a roll that has already
+        # been attempted, or by a reverse that could not get into range. Reset
+        # on every new target and on arrival.
+        self._skip_roulade = False
         self._recovery_settle_start = None
         self._home_oriented = True
 
@@ -238,6 +193,14 @@ class RayuelaControlNode(Node):
         self._approach_state = "straight"
         self._roulade_confirmed = False
         self._roulade_wait_start = None
+        # A new casilla gets a fresh approach: the reverse latch and the
+        # "this one is not worth rolling to" verdict both belonged to the
+        # previous target.
+        self._reversing = False
+        self._settle_until = None
+        self._aligning = False
+        self._final_turning = False
+        self._skip_roulade = False
         self.get_logger().info(
             f"New target: casilla {msg.casilla_id} at "
             f"({msg.center.x:.2f}, {msg.center.y:.2f})"
@@ -341,6 +304,12 @@ class RayuelaControlNode(Node):
         bang-bang at TURN_IN_PLACE_CMD: below ~1.5 rad/s the duck does not
         rotate at all standing still, so a PD there would stall at whatever
         small command it converges to.
+
+        The P and D terms both run on the FILTERED error (HEADING_ERR_FILTER),
+        so the controller does not chase the gait's own +/-4 deg yaw
+        oscillation, and small errors command a clean zero
+        (HEADING_DEADBAND_RAD) instead of the old pure-derivative branch. The
+        published command is additionally rate-limited in pub_vel_cmd.
         """
         now = self.get_clock().now()
         gap = None if self._pd_last_t is None else (now - self._pd_last_t).nanoseconds * 1e-9
@@ -348,53 +317,126 @@ class RayuelaControlNode(Node):
             # First call, or resuming after a fall / trick hold: no usable
             # history, and a stale sample would inject a huge fake rate.
             self._pd_err_rate = 0.0
+            self._pd_err_filt = heading_error
         else:
+            # Filter the error itself (see HEADING_ERR_FILTER), wrapping the
+            # step so the EMA cannot be dragged the long way round at +/-pi.
+            step = math.atan2(
+                math.sin(heading_error - self._pd_err_filt),
+                math.cos(heading_error - self._pd_err_filt),
+            )
+            self._pd_err_filt = math.atan2(
+                math.sin(self._pd_err_filt + HEADING_ERR_FILTER * step),
+                math.cos(self._pd_err_filt + HEADING_ERR_FILTER * step),
+            )
+        if gap is not None and gap <= 3 * CONTROL_DT_S:
             d_err = math.atan2(
-                math.sin(heading_error - self._pd_prev_err),
-                math.cos(heading_error - self._pd_prev_err),
+                math.sin(self._pd_err_filt - self._pd_prev_err),
+                math.cos(self._pd_err_filt - self._pd_prev_err),
             ) / max(gap, 1e-3)
             self._pd_err_rate += HEADING_D_FILTER * (d_err - self._pd_err_rate)
-        self._pd_prev_err = heading_error
+        self._pd_prev_err = self._pd_err_filt
         self._pd_last_t = now
 
-        if abs(heading_error) > math.radians(15.0):
-            ang_vel = TURN_KP * heading_error + TURN_KD * self._pd_err_rate
+        if abs(self._pd_err_filt) < HEADING_DEADBAND_RAD:
+            ang_vel = 0.0
         else:
-            ang_vel = TURN_KD * self._pd_err_rate
-
+            ang_vel = TURN_KP * self._pd_err_filt + TURN_KD * self._pd_err_rate
+        if abs(ang_vel) < MIN_ANG_VEL:
+            ang_vel = math.copysign(MIN_ANG_VEL, ang_vel)
         return max(-MAX_ANG_VEL, min(MAX_ANG_VEL, ang_vel))
     
-    def _walking_pd(self, distance: float) -> float:
-        """PD on the distance to target -> forward velocity command.
+    def _should_reverse(self, roll_error: float) -> bool:
+        """Whether to back up so a roll can land on the casilla.
 
-        Far away the command just saturates at MAX_LIN_VEL; the PD only does
-        something inside SLOWDOWN_RADIUS_M, where it eases off (and the D term
-        brakes earlier the faster the duck is closing) so it stops near the
-        target instead of coasting past it and having to come back.
+        Latched: entered when the duck is nearer than one roll-length by more
+        than ROULADE_LANDING_TOLERANCE_M, left once the roll error is back
+        inside the tighter REVERSE_EXIT_TOLERANCE_M — which then starts the
+        settle pause (REVERSE_SETTLE_S) before orienting.
 
-        The output is then snapped to the gait's dead zone (see WALK_MIN_VEL):
-        anything the duck cannot act on becomes either the floor or a clean
-        zero. Without that the tail of the taper is a command that walks
-        nowhere while the heading PD keeps turning — the duck circling near
-        the target rather than reaching it.
+        It is allowed to FAIL, and must be: reverse is the weakest thing this
+        gait does. If REVERSE_MAX_M of backing up or REVERSE_TIMEOUT_S go by
+        without reaching roll range, the roulade is dropped for this target and
+        the duck walks in. Without that, this branch would hold the approach
+        forever — the same trap that froze _rotate_home and the realign branch.
         """
-        now = self.get_clock().now()
-        gap = None if self._walk_last_t is None else (now - self._walk_last_t).nanoseconds * 1e-9
-        if gap is None or gap > 3 * CONTROL_DT_S:
-            # First call, or resuming after a fall / trick hold: a stale sample
-            # would inject a huge fake closing rate.
-            self._walk_dist_rate = 0.0
-        else:
-            d_rate = (distance - self._walk_prev_dist) / max(gap, 1e-3)
-            self._walk_dist_rate += WALK_D_FILTER * (d_rate - self._walk_dist_rate)
-        self._walk_prev_dist = distance
-        self._walk_last_t = now
+        if not ENABLE_ROULADE_FINISH or self._skip_roulade:
+            return False
 
-        lin_vel = WALK_KP * distance + WALK_KD * self._walk_dist_rate
-        lin_vel = max(0.0, min(MAX_LIN_VEL, lin_vel))
-        if lin_vel < WALK_MIN_VEL:
-            lin_vel = 0.0 if distance <= POS_TOLERANCE_M else WALK_MIN_VEL
-        return lin_vel
+        if not self._reversing:
+            if roll_error < -ROULADE_LANDING_TOLERANCE_M:
+                self._reversing = True
+                self._reverse_start = self.get_clock().now()
+                self._reverse_start_error = roll_error
+                self.get_logger().info(
+                    f"Too close to roll by {-roll_error:.2f}m — backing up"
+                )
+            return self._reversing
+
+        if abs(roll_error) <= REVERSE_EXIT_TOLERANCE_M:
+            self._reversing = False
+            self._settle_until = self.get_clock().now() + Duration(
+                seconds=REVERSE_SETTLE_S
+            )
+            self.get_logger().info(
+                f"Back in roll range ({roll_error:+.2f}m) — settling "
+                f"{REVERSE_SETTLE_S:.0f}s before orienting"
+            )
+            return False
+
+        backed_up = roll_error - self._reverse_start_error
+        elapsed = (self.get_clock().now() - self._reverse_start).nanoseconds * 1e-9
+        if backed_up > REVERSE_MAX_M or elapsed > REVERSE_TIMEOUT_S:
+            self._reversing = False
+            self._skip_roulade = True
+            self.get_logger().warn(
+                f"Backed up {backed_up:.2f}m in {elapsed:.0f}s and still "
+                f"{-roll_error:.2f}m too close — walking in instead"
+            )
+            return False
+        return True
+
+    def _settling(self) -> bool:
+        """Holding still after a reverse (see REVERSE_SETTLE_S)."""
+        if self._settle_until is None:
+            return False
+        if self.get_clock().now() >= self._settle_until:
+            self._settle_until = None
+            return False
+        return True
+
+    def _turn_in_place(self, heading_error: float) -> tuple[float, float]:
+        """(0, +/-TURN_IN_PLACE_CMD): the only in-place turn that moves the duck."""
+        return 0.0, math.copysign(TURN_IN_PLACE_CMD, heading_error)
+
+    def _needs_realign(self, heading_error: float) -> bool:
+        """Latched: enter at ALIGN_TURN_ENTER_RAD, leave at ...EXIT_RAD."""
+        if self._aligning:
+            if abs(heading_error) < ALIGN_TURN_EXIT_RAD:
+                self._aligning = False
+        elif abs(heading_error) > ALIGN_TURN_ENTER_RAD:
+            self._aligning = True
+        return self._aligning
+
+    def _final_approach(self, distance: float, heading_error: float) -> tuple[float, float]:
+        """(lin_vel, ang_vel) for the last FINAL_APPROACH_M to a target.
+
+        Alternates between turning in place and walking straight (see
+        FINAL_APPROACH_M). Replaces a proportional taper on lin_vel, whose
+        whole output range sat inside the gait's dead zone: the duck circled
+        near the target and never arrived.
+        """
+        if self._final_turning:
+            if abs(heading_error) < FINAL_TURN_EXIT_RAD:
+                self._final_turning = False
+        elif abs(heading_error) > FINAL_TURN_ENTER_RAD:
+            self._final_turning = True
+
+        if self._final_turning:
+            return self._turn_in_place(heading_error)
+        # Facing it: close the gap without steering. Over 24 cm the heading
+        # cannot drift far, and chasing the bearing is exactly what spins it.
+        return WALK_MIN_VEL, 0.0
 
     def _gated(self, lin_vel: float, ang_vel: float) -> tuple[float, float]:
         """Zero out a steering command if the sim isn't in a state that can
@@ -433,25 +475,27 @@ class RayuelaControlNode(Node):
         heading_error = math.atan2(
             math.sin(target_yaw - yaw), math.cos(target_yaw - yaw)
         )
-        
+
+        if abs(heading_error) > math.radians(30):
+            ang_vel = self._heading_pd(heading_error)
+            self.pub_vel_cmd(0.0, ang_vel)
+            return
+
         if distance <= POS_TOLERANCE_M:
             self.pub_vel_cmd(0.0, 0.0)
             self._home_oriented = False
+            self._final_turning = False
             return
-        elif distance > POS_TOLERANCE_M and distance <= POS_TOLERANCE_M + 0.2:
-            ang_vel = self._heading_pd(heading_error)
-            lin_vel = self._walking_pd(distance)
-            self.pub_vel_cmd(*self._gated(lin_vel, ang_vel))
+        elif distance <= FINAL_APPROACH_M:
+            self.pub_vel_cmd(*self._gated(*self._final_approach(distance, heading_error)))
             return
 
         ang_vel = self._heading_pd(heading_error)
         
-        # Full speed or nothing — NOT a proportional taper. STRAIGHT_KP*distance
-        # produced 0.15, 0.14, 0.11... as it closed in, which is doubly useless:
-        # those are inside the gait's dead zone (no net motion below ~0.3, so
-        # the duck just crawled) AND they sit right on switch_threshold, so
-        # PolicyInference flapped walking<->standing every tick. Arrival is the
-        # POS_TOLERANCE_M check above, which commands a clean zero.
+        # Full speed or nothing. A proportional taper produced 0.15, 0.14,
+        # 0.11... on approach: inside the dead zone AND right on
+        # switch_threshold, so the sim flapped walking<->standing every tick.
+        # Arrival is the POS_TOLERANCE_M check above, which commands zero.
         self.pub_vel_cmd(*self._gated(MAX_LIN_VEL, ang_vel))
 
     def _run_casilla_approach(self, q) -> None:
@@ -465,18 +509,45 @@ class RayuelaControlNode(Node):
         heading_error = math.atan2(
             math.sin(target_yaw - yaw), math.cos(target_yaw - yaw)
         )
+        # Badly misaligned: face the target before walking at it. Bang-bang —
+        # see ALIGN_TURN_ENTER_RAD for why a PD here freezes the duck.
+        if self._needs_realign(heading_error):
+            self.pub_vel_cmd(*self._gated(*self._turn_in_place(heading_error)))
+            return
 
         if distance <= POS_TOLERANCE_M:
             self.pub_vel_cmd(0.0, 0.0)
             self._approach_state = "arrived"  # reset for the next target
+            self._final_turning = False
+            self._aligning = False
+            self._reversing = False
+            self._settle_until = None
+            self._skip_roulade = False
             self.get_logger().info(
                 f"Arrived at casilla {self._target.casilla_id} ({distance:.3f}m)"
             )
             return
-        elif distance > POS_TOLERANCE_M and distance <= POS_TOLERANCE_M + 0.2:
-            ang_vel = self._heading_pd(heading_error)
-            lin_vel = self._walking_pd(distance)
-            self.pub_vel_cmd(*self._gated(lin_vel, ang_vel))
+        elif distance <= FINAL_APPROACH_M:
+            self.pub_vel_cmd(*self._gated(*self._final_approach(distance, heading_error)))
+            return
+
+        if self._approach_state == "pre_roll":
+            # Standing still between the in-place turn and the roll. Alignment
+            # is NOT re-checked when the pause ends: the duck is holding a zero
+            # command, so it cannot have turned away, and re-checking would let
+            # a few tenths of a degree of drift send it back to orient and
+            # around again.
+            self.pub_vel_cmd(0.0, 0.0)
+            if self._settling():
+                return
+            self.behavior_pub.publish(String(data="roulade"))
+            self._approach_state = "roulade_wait"
+            self._roulade_confirmed = False
+            self._roulade_wait_start = self.get_clock().now()
+            # Arm the hold now, not when current_policy first reports
+            # "roulade" — the duck is already committed and the tilt can
+            # cross FALL_TILT_RAD before that topic update lands.
+            self.now_roulade = self._roulade_wait_start
             return
 
         if self._approach_state == "roulade_wait":
@@ -484,9 +555,17 @@ class RayuelaControlNode(Node):
             now = self.get_clock().now()
             if self._current_policy == "roulade":
                 self._roulade_confirmed = True
+                # ONE roll per target, and it is spent the moment the roll
+                # actually starts. A roll that ends far from the casilla used
+                # to put the duck back in "straight", which could walk it into
+                # roll range again and fire a second one — and a third. The
+                # walk-in always works, so a bad roll costs a few seconds
+                # instead of an unbounded loop of tumbles.
+                self._skip_roulade = True
             elif self._roulade_confirmed:
                 self.get_logger().info(
-                    f"Roulade finished — now {distance:.3f}m from the casilla"
+                    f"Roulade finished — now {distance:.3f}m from the casilla; "
+                    f"walking the rest (one roll per target)"
                 )
                 self._approach_state = "straight"
             elif (now - self._roulade_wait_start).nanoseconds * 1e-9 > ROULADE_WAIT_TIMEOUT_S:
@@ -497,51 +576,90 @@ class RayuelaControlNode(Node):
                 self._approach_state = "straight"
             return
 
-        in_roulade_band = abs(distance - ROULADE_ROLL_DISTANCE_M) <= ROULADE_TRIGGER_BAND_M
+        # Three cases, and only the middle one rolls:
+        #   too far  -> walk forward until a roll would land on the casilla
+        #   in range -> orient, then roll
+        #   too near -> back up until it would land on the square again
+        #               (REVERSE_VEL); if the reverse does not progress, give
+        #               up on the roll and walk in.
+        roll_error = distance - ROULADE_ROLL_DISTANCE_M
+        roulade_lands_on_target = abs(roll_error) <= ROULADE_LANDING_TOLERANCE_M
+
+        if self._should_reverse(roll_error):
+            # Hold the heading while reversing: the gait veers badly backwards,
+            # and orient inherits whatever heading this leaves behind.
+            self.pub_vel_cmd(*self._gated(REVERSE_VEL, 0.0))
+            return
+
+        if self._settling():
+            # Explicit zeros, not just "publish nothing": the sim holds the
+            # last command it was given, so silence here would keep reversing.
+            self.pub_vel_cmd(0.0, 0.0)
+            return
 
         if self._approach_state == "straight":
-            if ENABLE_ROULADE_FINISH and in_roulade_band:
+            if ENABLE_ROULADE_FINISH and roulade_lands_on_target \
+                    and not self._skip_roulade:
                 self._approach_state = "orient"
             else:
-                # Walk the whole way in (no taper — see MAX_LIN_VEL's dead-zone
-                # note; scaling down on approach just stops the duck short).
+                # Walk the whole way in (no taper — see WALK_MIN_VEL's
+                # dead-zone note; scaling down on approach stops the duck
+                # short). This is also the path when the roll would overshoot.
                 ang_vel = self._heading_pd(heading_error)
                 self.pub_vel_cmd(*self._gated(MAX_LIN_VEL, ang_vel))
                 return
 
         if self._approach_state == "orient":
-            if not in_roulade_band:
-                # Drifted out of one roll-length while turning — walk again
-                # rather than fire a roll that can no longer land on target.
+            if not roulade_lands_on_target:
+                # Drifted while turning and a roll would now miss the square.
+                # Walk (forward — there is no usable reverse); if the duck is
+                # now TOO NEAR, "straight" walks it in without rolling.
                 self._approach_state = "straight"
-                self.pub_vel_cmd(*self._gated(MAX_LIN_VEL, 0.0))
+                self.pub_vel_cmd(*self._gated(MAX_LIN_VEL,
+                                              self._heading_pd(heading_error)))
                 return
             if abs(heading_error) <= ROULADE_ALIGN_TOLERANCE_RAD:
                 self.get_logger().info(
-                    f"Aligned — triggering roulade at {distance:.3f}m "
-                    f"(roll covers ~{ROULADE_ROLL_DISTANCE_M:.2f}m)"
+                    f"Aligned at {distance:.3f}m — settling "
+                    f"{ROULADE_PRE_SETTLE_S:.0f}s, then rolling "
+                    f"(covers ~{ROULADE_ROLL_DISTANCE_M:.2f}m)"
                 )
-                self.behavior_pub.publish(String(data="roulade"))
-                self._approach_state = "roulade_wait"
-                self._roulade_confirmed = False
-                self._roulade_wait_start = self.get_clock().now()
-                # Arm the hold now, not when current_policy first reports
-                # "roulade" — the duck is already committed and the tilt can
-                # cross FALL_TILT_RAD before that topic update lands.
-                self.now_roulade = self._roulade_wait_start
+                self._approach_state = "pre_roll"
+                self._settle_until = self.get_clock().now() + Duration(
+                    seconds=ROULADE_PRE_SETTLE_S
+                )
+                self.pub_vel_cmd(0.0, 0.0)
                 self.pub_vel_cmd(0.0, 0.0)
             else:
                 # Bang-bang like _rotate_home: this is an in-place turn, and a
                 # proportional command stalls below ~1.5 rad/s (see
                 # TURN_IN_PLACE_CMD). Same latent bug that froze _rotate_home.
-                ang_vel = math.copysign(TURN_IN_PLACE_CMD, heading_error)
-                self.pub_vel_cmd(*self._gated(0.0, ang_vel))
+                self.pub_vel_cmd(*self._gated(*self._turn_in_place(heading_error)))
 
     def pub_vel_cmd(self, lin_vel: float, ang_vel: float) -> None:
+        """Publish cmd_vel, rate-limiting the ANGULAR component.
+
+        The walking policy expects a roughly-held setpoint, not a value that
+        can flip between two 50 ms ticks; see ANG_SLEW_PER_TICK. The linear
+        command is passed through unlimited on purpose — it is binary by
+        design (WALK_MIN_VEL), and ramping it would only spend ticks inside the
+        gait's dead zone.
+
+        A commanded zero is honoured immediately rather than ramped: every
+        stop in this node (arrival, fall, trick hold, gating) is a safety
+        stop, and sliding down to it through the dead zone would leave the
+        duck walking for another few ticks.
+        """
+        if ang_vel == 0.0:
+            self._last_ang_cmd = 0.0
+        else:
+            delta = ang_vel - self._last_ang_cmd
+            self._last_ang_cmd += max(-ANG_SLEW_PER_TICK,
+                                      min(ANG_SLEW_PER_TICK, delta))
 
         cmd = Twist()
         cmd.linear.x = lin_vel
-        cmd.angular.z = ang_vel
+        cmd.angular.z = self._last_ang_cmd
         self.cmd_pub.publish(cmd)
 
 

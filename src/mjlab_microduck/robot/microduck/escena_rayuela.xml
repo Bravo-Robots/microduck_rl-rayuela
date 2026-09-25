@@ -20,7 +20,7 @@
         <geom name="floor" type="plane" size="0 0 0.05" rgba="0.45 0.47 0.5 1"/>
         
     </worldbody>
-         <contact>
+         <!-- <contact>
            <pair geom1="floor" geom2="ball_geom" condim="6" friction="0.5 0.5 0.005 0.002 0.002"/>
          </contact>
 
@@ -31,5 +31,5 @@
         0.3490658503988659 0.3490658503988659 0 0
         0 0.08726646259971647 0.457924 0.004940 -0.452984
         0.39 0 0.035 1 0 0 0"/>
-    </keyframe>
+    </keyframe> -->
 </mujoco>

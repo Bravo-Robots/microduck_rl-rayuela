@@ -71,6 +71,7 @@ instead of locally (see [scripts/hf/README.md](scripts/hf/README.md)).
 | `Mjlab-SitStand-{Flat,Rough}-MicroDuck` | flat/rough | Commanded sit ↔ stand in one policy, gently, head commandable |
 | `Mjlab-GroundPick-{Flat,Rough}-MicroDuck` | flat/rough | Crouch and touch the ground with the mouth tip, return to stand |
 | `Mjlab-BallKick-Flat-MicroDuck` | flat | Kick a 70 mm / 15 g ball forward (actor is ball-blind) |
+| `Mjlab-BallKickSpeed-{Left,Right}-Flat-MicroDuck` | flat | The same kick with a **commanded strength**: target ball exit speed rides in the twist vx slot |
 | `Mjlab-Roulade-Flat-MicroDuck` | flat | Forward roll over the head, land back on the feet |
 | `Mjlab-Velocity-Flat-MicroDuck-Rollers` | flat | Roller-skate velocity tracking (passive wheels under the feet) |
 | `Mjlab-Velocity-Swizzle-MicroDuck` | flat | Classic symmetric swizzle skating |
@@ -108,6 +109,59 @@ output side of the play, both the firmware PD emulation
 read *through* the backlash (`qpos[servo] + qpos[backlash]`). Observation and
 action dims are unchanged, so ONNX export and the runtime need no changes.
 See `src/mjlab_microduck/tasks/backlash.py`.
+
+## Rayuela — a hopscotch game
+
+<!-- VIDEO — one run: kick, ball lands on a square, duck walks/rolls to it. -->
+
+`ros2_microduck/` is a ROS 2 (Humble) application built on top of these
+policies: the duck kicks a ball onto a hopscotch board, a camera works out
+which square it landed on, and the duck walks — or rolls — to that square.
+It is the end-to-end integration test for the whole policy family.
+
+```bash
+cd ros2_microduck && colcon build --symlink-install && source install/setup.bash
+ros2 launch rayuela rayuela.launch.py            # sim + vision + control + teleop
+ros2 launch rayuela rayuela.launch.py use_bam_bridge:=true   # BAM actuators (as trained)
+```
+
+Four nodes on `/rayuela/*` topics:
+
+| Node | Does |
+|---|---|
+| `sim_node` | MuJoCo + the ONNX policies; publishes the camera, the duck pose and `current_policy` |
+| `vision_node` | Rectifies the angled camera to a metric top-down view, finds the ball, reports the casilla |
+| `control_node` | Drives the duck to the reported casilla and back to HOME |
+| `teleop_keyboard` | Manual driving, tricks, and "kick to casilla N" (digits 1-9, 0 = cielo) |
+
+**Python split.** `rclpy` lives in the system Python 3.10 while mujoco /
+onnxruntime / bam live in the project's 3.12 venv, so the simulation runs in a
+venv worker and talks to ROS over a Unix socket (`rayuela_ipc.py`,
+`bridge_node.py`). `use_bam_bridge:=true` selects that path.
+
+**Vision.** Four coloured fiducials give a one-off homography into a metric
+top-down canvas, where the ball is a blob of known size. It is picked by
+*solidity*, not size or circularity: the duck is orange too, and at the far end
+of the board the homography stretches the ball into a 2:1 ellipse that ruins
+circularity but not convexity. When the duck lies on the ball and the two blobs
+fuse, a Hough fallback recovers the circle.
+
+**Control.** Every command is bang-bang, because the gait has measured dead
+zones: no net motion below 0.25 m/s commanded, and no in-place rotation below
+~1.5 rad/s. Tapering a command to zero looks exactly like a frozen controller.
+
+**Kick calibration.** `scripts/kick_sweep.py` measures, policy in the loop,
+what each commanded speed actually does — travel, exit speed, off-axis angle,
+and whether the duck stayed on its feet. Those sweeps are the source of the
+per-foot tables in `board_geometry.py` that map a casilla to a kick command,
+and the acceptance test for a retrained kick.
+
+**Mirrored policies.** The two kick tasks are exact mirror images and the robot
+is bilaterally symmetric, so `scripts/mirror_policy.py` turns the right-foot
+policy into a left-foot one — permuting and sign-flipping the 61-D observation
+in and the 14-D action out — and can bake that into a standalone `.onnx`. Here
+it beat the separately trained left policy (+1.5 deg of drift mid-range against
++19.6) and is what makes all ten casillas reachable.
 
 ## Actuator model
 
@@ -157,6 +211,15 @@ src/mjlab_microduck/
 ├── train_cli.py                      # `train` script (identical to mjlab's)
 ├── train_hook.py                     # intercepts `train ... --hf-jobs`
 └── hf_jobs.py                        # Hugging Face Jobs submission
+
+ros2_microduck/src/                   # the rayuela game (ROS 2 Humble)
+├── rayuela_msgs/                     # TargetCasilla message
+└── rayuela/rayuela/
+    ├── sim_node.py, sim_worker.py    # MuJoCo + policies (venv worker + bridge)
+    ├── vision_node.py                # rectify, find the ball, report the casilla
+    ├── control_node.py               # drive to the casilla and back to HOME
+    ├── board_geometry.py             # board layout, camera, measured kick tables
+    └── teleop_keyboard.py            # manual driving and tricks
 ```
 
 Conventions worth knowing:
