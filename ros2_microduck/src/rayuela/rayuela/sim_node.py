@@ -190,6 +190,8 @@ class RayuelaSimNode(Node):
             self.policy.trigger_ground_pick()
         elif name == "toggle_sit":
             self.policy.toggle_sit()
+        elif name == "stop":
+            self.policy.stop_all()
         elif kick_command.is_kick_command(name):
             try:
                 kick, speed = kick_command.parse_kick_command(

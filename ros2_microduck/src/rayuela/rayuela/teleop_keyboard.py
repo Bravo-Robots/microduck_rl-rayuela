@@ -53,7 +53,7 @@ class TerminalInput:
     cbreak (not raw) mode keeps ISIG enabled, so Ctrl+C still works.
     """
 
-    _ARROWS = {"A": "up", "B": "down", "C": "right", "D": "left", "Q": "quit"}
+    _ARROWS = {"A": "up", "B": "down", "C": "right", "D": "left", "Q": "quit", "X": "stop"}
 
     def __init__(self):
         self._queue = queue.Queue()
@@ -115,8 +115,8 @@ class RayuelaTeleopKeyboard(Node):
         self.vel_cmd = [0.0, 0.0, 0.0]
         print(
             "\nrayuela teleop — arrows: walk, space: stop, "
-            "k/l: kick left/right, r: roulade, g: ground_pick, y: toggle sit, "
-            "h: go home, 1-9/0: kick to casilla 1-9/10, q: quit\n"
+            "k/l: kick left/right, r: roulade, g: ground_pick, y: toggle_sit, "
+            "h: home, x: stop, 1-9/0: kick to casilla 1-9/10, q: quit\n"
         )
     
     def handle_key(self, key: str) -> bool:
@@ -131,14 +131,20 @@ class RayuelaTeleopKeyboard(Node):
             self.vel_cmd[2] = -VEL_MAX_ANG
         elif key == " ":
             self.vel_cmd = [0.0, 0.0, 0.0]
-        elif key in ("k", "l", "r", "g", "y"):
+        elif key in ("k", "l", "r", "g", "y", "x"):
             name = {
                 "k": "kick_left",
                 "l": "kick_right",
                 "r": "roulade",
                 "g": "ground_pick",
                 "y": "toggle_sit",
+                "x": "stop"
             }[key]
+            if key == "x":
+                # This handler publishes the twist below after the behavior;
+                # with the old velocity still in it, that twist would arrive
+                # right behind "stop" and set the duck walking again.
+                self.vel_cmd = [0.0, 0.0, 0.0]
             self.behavior_pub.publish(String(data=name))
             print(f"Triggered behavior: {name}")
         elif key == "h":

@@ -380,6 +380,14 @@ class RayuelaVisionNode(Node):
             self._track_until_stopped(*ball_px)
 
     def _on_behavior_cmd(self, msg: String) -> None:
+        if msg.data.strip() == "stop":
+            # A landing still being tracked would publish a target after the
+            # stop and send the duck walking off to it.
+            if self._awaiting_landing:
+                self._awaiting_landing = False
+                self._ball_track.clear()
+                self.get_logger().info("Stop — landing detection disarmed")
+            return
         # Any form: kick_right, kick_right:1.25, kick_casilla:7.
         if not kick_command.is_kick_command(msg.data):
             return

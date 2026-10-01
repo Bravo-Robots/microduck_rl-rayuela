@@ -29,7 +29,7 @@ from rayuela import board_geometry
 from rayuela_msgs.msg import TargetCasilla
 
 CONTROL_DT_S = 0.05
-POS_TOLERANCE_M = 0.04
+POS_TOLERANCE_M = 0.08
 MAX_LIN_VEL = 0.5
 MAX_ANG_VEL = 2.0
 MIN_ANG_VEL = 0.4
@@ -178,6 +178,7 @@ class RayuelaControlNode(Node):
         self.create_subscription(TargetCasilla, "/rayuela/target_casilla", self._on_target, 10)
         self.create_subscription(Bool, "/rayuela/go_home", self._on_go_home, 10)
         self.create_subscription(String, "/rayuela/current_policy", self._on_current_policy, 10)
+        self.create_subscription(String, "/rayuela/behavior_cmd", self._on_behavior_cmd, 10)
 
         self.timer = self.create_timer(CONTROL_DT_S, self._on_timer)
         self.get_logger().info("rayuela_control_node ready")
@@ -205,6 +206,30 @@ class RayuelaControlNode(Node):
             f"New target: casilla {msg.casilla_id} at "
             f"({msg.center.x:.2f}, {msg.center.y:.2f})"
         )
+
+    def _on_behavior_cmd(self, msg: String) -> None:
+        """"stop" (teleop X) cancels the target and go-home.
+
+        The sim drops into standing on its own; this node's job is to stop
+        steering, or its next tick would set the duck walking again. It ends
+        with an explicit zero because idle publishes nothing and the sim holds
+        the last command it got — a steering command already in flight would
+        otherwise be the one it keeps.
+        """
+        if msg.data.strip() != "stop":
+            return
+        self._target = None
+        self._go_home = False
+        self._home_oriented = False
+        self._approach_state = "arrived"
+        self._reversing = False
+        self._settle_until = None
+        self._aligning = False
+        self._final_turning = False
+        self._skip_roulade = False
+        self.now_roulade = None
+        self.pub_vel_cmd(0.0, 0.0)
+        self.get_logger().info("Stop — target and go-home cancelled")
 
     def _on_go_home(self, msg: Bool) -> None:
         self._go_home = msg.data
@@ -481,7 +506,7 @@ class RayuelaControlNode(Node):
             self.pub_vel_cmd(0.0, ang_vel)
             return
 
-        if distance <= POS_TOLERANCE_M:
+        if distance <= (POS_TOLERANCE_M-0.04):
             self.pub_vel_cmd(0.0, 0.0)
             self._home_oriented = False
             self._final_turning = False

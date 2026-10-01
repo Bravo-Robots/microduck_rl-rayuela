@@ -73,6 +73,8 @@ instead of locally (see [scripts/hf/README.md](scripts/hf/README.md)).
 | `Mjlab-BallKick-Flat-MicroDuck` | flat | Kick a 70 mm / 15 g ball forward (actor is ball-blind) |
 | `Mjlab-BallKickSpeed-{Left,Right}-Flat-MicroDuck` | flat | The same kick with a **commanded strength**: target ball exit speed rides in the twist vx slot |
 | `Mjlab-Roulade-Flat-MicroDuck` | flat | Forward roll over the head, land back on the feet |
+| `Mjlab-OneLeggedStand-Flat-MicroDuck` | flat | Balance on one foot, the other tucked up, head free to counterbalance |
+| `Mjlab-OneLeggedHop-Flat-MicroDuck` | flat | The same stand, then hopping on it (warm-starts from a Stand checkpoint) |
 | `Mjlab-Velocity-Flat-MicroDuck-Rollers` | flat | Roller-skate velocity tracking (passive wheels under the feet) |
 | `Mjlab-Velocity-Swizzle-MicroDuck` | flat | Classic symmetric swizzle skating |
 | `Mjlab-RollerCrouch-Flat-MicroDuck` | flat | Crouch while gliding on rollers |

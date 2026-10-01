@@ -37,3 +37,8 @@ python3 scripts/obs-duck-cam.py
 Race:
 uv run python3 scripts/build_multi_duck_scene.py     --scene src/mjlab_microduck/robot/microduck/scene.xml     --n 2 --layout track --spacing 0.5 --track-length 4.0     --out src/mjlab_microduck/robot/microduck/scene_track_6ducks.xml
 uv run python3 scripts/multi_duck_controller.py     --scene src/mjlab_microduck/robot/microduck/scene_track_6ducks.xml     --walking walking.onnx    --n 6 --lin-vel-x 0.25 --new-cmd-obs     --race --finish-x 4.0 --start-x 0.0
+
+Rayuela:
+
+cd ros2_microduck && colcon build --symlink-install && source install/setup.bash
+ros2 launch rayuela rayuela.launch.py use_bam_bridge:=true use_viewer:=true

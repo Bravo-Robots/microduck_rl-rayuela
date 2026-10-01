@@ -810,6 +810,37 @@ class PolicyInference:
         foot = behavior.split("_")[1]
         print(f"Ball placed at ({bx:.3f}, {by:.3f}) in front of the {foot} foot")
 
+    def stop_all(self):
+        """X key: abort whatever the duck is doing and drop into STANDING.
+
+        Ends a running kick or roulade, a ground pick, sit and slope mode, and
+        zeroes the velocity, head and body-pose commands. It cannot live in
+        _update_policy_session: that returns early during every one of those
+        modes, which are exactly the ones worth interrupting.
+
+        alpha_standing is the safe state because it is the one policy that
+        recovers from what the others leave behind — it rights itself even
+        from a fall while sitting (see update_sit_fall_watchdog).
+        """
+        if self.standing_session is None:
+            print("Stop unavailable: no --standing policy loaded")
+            return
+        was = self.behavior_mode or self.current_policy
+        self.behavior_mode = None
+        self.behavior_time_left = 0.0
+        self.ground_pick_mode = False
+        self.ground_pick_phase = 0.0
+        self.sit_mode = False
+        self._sit_fall_s = 0.0
+        self.slope_mode = False
+        self.vel_cmd = np.zeros(3, dtype=np.float32)
+        self.head_offset[:] = 0.0
+        self.body_cmd[:] = 0.0
+        self.current_policy = "standing"
+        self.ort_session = self.standing_session
+        self._update_command()
+        print(f"STOP: {was} aborted → standing")
+
     def trunk_tilt_rad(self) -> float:
         """Angle between the trunk's up axis and world up."""
         adr = self._trunk_qpos_adr
@@ -1354,6 +1385,10 @@ def main():
                 policy.trigger_behavior("kick_right")
             elif key == "r":
                 policy.trigger_behavior("roulade")
+            elif key == "x":
+                policy.stop_all()
+                if not policy_enabled:
+                    print("  (inference is paused — press T to let the standing policy act)")
             elif key == "q":
                 quit_requested = True
                 print("Quit requested")
@@ -1415,6 +1450,7 @@ def main():
         print("  LEFT/RIGHT arrow: strafe left/right (lin_vel_y)")
         print("  A / E:            turn left/right (ang_vel_z)")
     print("  SPACE:            coast (zero all commands)")
+    print("  X:                STOP — abort any kick/roulade/sit/pick/slope and stand")
     print("  T:                toggle policy inference on/off (paused = motors hold last target)")
     print("  G:                trigger ground pick (requires --ground-pick)")
     print("  Y:                toggle sit (with --sit/--sitstand) or slope mode (with --slope)")

@@ -228,6 +228,10 @@ class SimWorker:
                 print(f"'{name}': fixed-speed kick policies loaded, target speed ignored")
             print(f"{kick}" + (f" at {speed:.2f} m/s" if speed is not None else ""))
             self.policy.trigger_behavior(kick, kick_speed=speed)
+        elif name == "stop":
+            # Not a behavior session: stop_all ends whatever is running (kick,
+            # roulade, sit, pick) and drops into the standing policy.
+            self.policy.stop_all()
         elif name in self.policy.behavior_sessions:
             self.policy.trigger_behavior(name)
         else:

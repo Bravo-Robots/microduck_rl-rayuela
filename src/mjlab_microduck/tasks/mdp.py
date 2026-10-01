@@ -6033,6 +6033,120 @@ def single_foot_grounded_reward(
     return torch.clamp(found, 0.0, 1.0)
 
 
+def reset_one_leg_stance(
+    env: ManagerBasedRlEnv,
+    env_ids: torch.Tensor,
+    stance: tuple,
+    base_roll: float,
+    base_z: float,
+    prob: float = 0.8,
+    joint_noise: float = 0.03,
+    roll_noise: float = 0.05,
+    asset_cfg: SceneEntityCfg = _DEFAULT_ASSET_CFG,
+):
+    """Reset a fraction of envs directly INTO a one-legged stance.
+
+    Reverse curriculum (AGENTS.md): a policy that has to discover a one-leg
+    balance from a two-foot start never sees the one-leg state long enough to
+    learn it — measured, the first OneLeggedHop run ended every episode on the
+    first second and learned nothing in 4000 iterations. Starting ``prob`` of
+    the episodes already on one leg makes that state dense from step 0; the
+    rest keep the normal two-foot reset so the lift into it is trained too.
+
+    ``stance`` is the 14-servo pose in servo order and ``base_roll`` the trunk
+    roll it implies with the support foot flat on the floor (the leg below the
+    hip only has pitch joints, so leaning the trunk is the ONLY way to get the
+    CoM over one foot). Yaw is random. Joint noise is clamped to the soft
+    limits: the support hip_roll sits at its limit in this stance.
+    Must run AFTER reset_base / reset_robot_joints (events run in dict order).
+    """
+    if env_ids is None or len(env_ids) == 0:
+        return
+    env_ids = env_ids.to(env.device, dtype=torch.long)
+    pick = torch.rand(len(env_ids), device=env.device) < prob
+    env_ids = env_ids[pick]
+    num = len(env_ids)
+    if num == 0:
+        return
+    asset: Entity = env.scene[asset_cfg.name]
+
+    servo_ids = _servo_joint_ids(env, asset)
+    joints = asset.data.default_joint_pos[env_ids].clone()
+    target = torch.tensor(stance, dtype=joints.dtype, device=env.device)
+    joints[:, servo_ids] = target + (torch.rand(num, len(servo_ids), device=env.device)
+                                     * 2 - 1) * joint_noise
+    limits = asset.data.soft_joint_pos_limits[env_ids]
+    joints = joints.clamp(limits[..., 0], limits[..., 1])
+
+    roll = base_roll + (torch.rand(num, device=env.device) * 2 - 1) * roll_noise
+    yaw = torch.rand(num, device=env.device) * 2 * math.pi - math.pi
+    cr, sr = torch.cos(roll * 0.5), torch.sin(roll * 0.5)
+    cy, sy = torch.cos(yaw * 0.5), torch.sin(yaw * 0.5)
+    # yaw (world z) composed with roll (body x): q_yaw * q_roll
+    quat = torch.stack([cy * cr, cy * sr, sy * sr, sy * cr], dim=1)
+
+    env.sim.data.qpos[env_ids, 2] = base_z
+    env.sim.data.qpos[env_ids, 3:7] = quat
+    env.sim.data.qpos[env_ids, 7:] = joints
+    env.sim.data.qvel[env_ids, :] = 0.0
+
+
+def hop_flight_reward(
+    env: ManagerBasedRlEnv,
+    support_sensor: str,
+    swing_sensor: str,
+    min_s: float = 0.04,
+    max_s: float = 0.30,
+) -> torch.Tensor:
+    """Reward a flight phase of the SUPPORT foot, only while the swing foot is
+    airborne. In [0, 1].
+
+    This is what makes the motion a HOP rather than a one-legged stand: the
+    support foot has to leave the ground and come back. Bounded above by
+    ``max_s`` so a single long leap does not outscore repeated hopping, and
+    gated on the swing foot so the policy cannot collect it by simply
+    dropping onto two feet mid-flight (AGENTS.md: encode the manoeuvre in a
+    hard state gate, not in a penalty nudge).
+    """
+    if support_sensor not in env.scene.sensors or swing_sensor not in env.scene.sensors:
+        return torch.zeros(env.num_envs, device=env.device)
+    air = env.scene.sensors[support_sensor].data.current_air_time
+    if air is None:
+        return torch.zeros(env.num_envs, device=env.device)
+    if air.dim() > 1:
+        air = air.max(dim=1).values
+    in_flight = ((air > min_s) & (air < max_s)).float()
+    swing_down = env.scene.sensors[swing_sensor].data.found
+    if swing_down.dim() > 1:
+        swing_down = swing_down.sum(dim=-1)
+    return in_flight * (swing_down.clamp(0.0, 1.0) < 0.5).float()
+
+
+def swing_foot_touchdown(
+    env: ManagerBasedRlEnv,
+    sensor_name: str,
+    grace_s: float = 1.0,
+) -> torch.Tensor:
+    """True once the swing foot touches the terrain — the hop is over.
+
+    A termination, not a penalty: with only a cost the policy discovers that
+    two feet are cheaper than one and the task dissolves into walking.
+
+    ``grace_s`` exists because the episode STARTS on two feet. Without it the
+    termination fires on the first step of essentially every episode (measured:
+    24 of 25 in a smoke run) and nothing can ever be learned. The grace is the
+    window the policy has to pick the foot up.
+    """
+    if sensor_name not in env.scene.sensors:
+        return torch.zeros(env.num_envs, dtype=torch.bool, device=env.device)
+    found = env.scene.sensors[sensor_name].data.found
+    if found.dim() > 1:
+        found = found.sum(dim=-1)
+    down = found.clamp(0.0, 1.0) > 0.5
+    started = (env.episode_length_buf.float() * env.step_dt) > grace_s
+    return down & started
+
+
 def ball_pos_in_base(
     env: ManagerBasedRlEnv,
     asset_name: str = "ball",

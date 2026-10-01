@@ -27,6 +27,11 @@ from .microduck_velocity_env_cfg import (
     make_microduck_velocity_env_cfg,
     MicroduckRlCfg,
 )
+from .microduck_onelegged_env_cfg import (
+    MicroduckOneLeggedHopRlCfg,
+    MicroduckOneLeggedStandRlCfg,
+    make_microduck_onelegged_env_cfg,
+)
 from .microduck_standup_env_cfg import (
     make_microduck_standup_env_cfg,
     MicroduckStandUpRlCfg,
@@ -88,6 +93,22 @@ register_mjlab_task(
     env_cfg=make_microduck_velocity_env_cfg(),
     play_env_cfg=make_microduck_velocity_env_cfg(play=True),
     rl_cfg=MicroduckRlCfg,
+    runner_cls=MicroduckOnPolicyRunner,
+)
+
+register_mjlab_task(
+    task_id="Mjlab-OneLeggedStand-Flat-MicroDuck",
+    env_cfg=make_microduck_onelegged_env_cfg(),
+    play_env_cfg=make_microduck_onelegged_env_cfg(play=True),
+    rl_cfg=MicroduckOneLeggedStandRlCfg,
+    runner_cls=MicroduckOnPolicyRunner,
+)
+
+register_mjlab_task(
+    task_id="Mjlab-OneLeggedHop-Flat-MicroDuck",
+    env_cfg=make_microduck_onelegged_env_cfg(hop=True),
+    play_env_cfg=make_microduck_onelegged_env_cfg(play=True, hop=True),
+    rl_cfg=MicroduckOneLeggedHopRlCfg,
     runner_cls=MicroduckOnPolicyRunner,
 )
 
