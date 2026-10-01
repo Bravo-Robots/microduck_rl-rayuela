@@ -114,6 +114,8 @@ See `src/mjlab_microduck/tasks/backlash.py`.
 
 ## Rayuela — a hopscotch game
 
+> Installing everything for the ROSCon workshop (uv venv + isolated ROS 2 Humble): see [INSTALL_TALLER.md](INSTALL_TALLER.md) (Spanish).
+
 <!-- VIDEO — one run: kick, ball lands on a square, duck walks/rolls to it. -->
 
 `ros2_microduck/` is a ROS 2 (Humble) application built on top of these
