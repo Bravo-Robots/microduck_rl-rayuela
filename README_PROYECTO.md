@@ -19,18 +19,16 @@ actuator physics, domain randomization, backlash simulation, and the
 reward-design lessons that made it work
 (see [AGENTS.md](AGENTS.md) for the distilled playbook).
 
-## Quickstart
+Installation (the uv venv and an isolated ROS 2 Humble for the rayuela game)
+is in [README.md](README.md), in Spanish. This file describes what is in the
+repo and how to use it once installed.
 
-Requires a CUDA GPU (training runs through MuJoCo Warp) and [uv](https://docs.astral.sh/uv/).
+## Train, watch, export
 
-> **On ARM boxes (DGX Spark / GB10, Jetson):** `uv sync` pulls ~2 GB of CUDA
-> wheels on first run and uv's default 30 s HTTP timeout can abort mid-download.
-> Export `UV_HTTP_TIMEOUT=600` for the first sync. 
+Training needs a CUDA GPU (it runs through MuJoCo Warp); everything after the
+export runs on CPU.
 
 ```bash
-git clone https://github.com/pollen-robotics/microduck_rl
-cd microduck_rl
-
 # train the walking policy (uses your GPU; ~1-2 h for a usable gait at 4096 envs)
 uv run train Mjlab-Velocity-Flat-MicroDuck --env.scene.num-envs 4096
 
@@ -114,34 +112,55 @@ See `src/mjlab_microduck/tasks/backlash.py`.
 
 ## Rayuela — a hopscotch game
 
-> Installing everything for the ROSCon workshop (uv venv + isolated ROS 2 Humble): see the main [README.md](README.md) (Spanish).
-
 <!-- VIDEO — one run: kick, ball lands on a square, duck walks/rolls to it. -->
 
 `ros2_microduck/` is a ROS 2 (Humble) application built on top of these
 policies: the duck kicks a ball onto a hopscotch board, a camera works out
 which square it landed on, and the duck walks — or rolls — to that square.
-It is the end-to-end integration test for the whole policy family.
+It is the end-to-end integration test for the whole policy family. Building
+and launching it is covered in [README.md](README.md).
 
-```bash
-cd ros2_microduck && colcon build --symlink-install && source install/setup.bash
-ros2 launch rayuela rayuela.launch.py            # sim + vision + control + teleop
-ros2 launch rayuela rayuela.launch.py use_bam_bridge:=true   # BAM actuators (as trained)
-```
-
-Four nodes on `/rayuela/*` topics:
+The nodes talk on `/rayuela/*` topics:
 
 | Node | Does |
 |---|---|
-| `sim_node` | MuJoCo + the ONNX policies; publishes the camera, the duck pose and `current_policy` |
+| `sim_node` | MuJoCo + the ONNX policies in one rclpy process, with plain XML position actuators; publishes the camera, the duck pose and `current_policy` |
+| `bridge_node` + `sim_worker.py` | The same simulation with the BAM actuators the policies were trained on (`use_bam_bridge:=true`), split across two interpreters (below) |
 | `vision_node` | Rectifies the angled camera to a metric top-down view, finds the ball, reports the casilla |
 | `control_node` | Drives the duck to the reported casilla and back to HOME |
 | `teleop_keyboard` | Manual driving, tricks, and "kick to casilla N" (digits 1-9, 0 = cielo) |
 
+Launch arguments: `use_bam_bridge`, `use_viewer`, `enable_vision`,
+`enable_control`, `enable_teleop`, and `venv_python` (the interpreter that runs
+`sim_worker.py`, `<repo>/.venv/bin/python3` by default).
+
 **Python split.** `rclpy` lives in the system Python 3.10 while mujoco /
-onnxruntime / bam live in the project's 3.12 venv, so the simulation runs in a
-venv worker and talks to ROS over a Unix socket (`rayuela_ipc.py`,
-`bridge_node.py`). `use_bam_bridge:=true` selects that path.
+onnxruntime / bam live in the project's 3.12 venv. So `sim_worker.py` runs the
+simulation in the venv, and `bridge_node` republishes its pose and camera
+frames as ROS topics and forwards `cmd_vel` / `behavior_cmd` back down a Unix
+socket. The wire format is in `rayuela_ipc.py`; it and `kick_command.py`
+(the `kick_right:1.25` / `kick_casilla:7` command grammar) are stdlib-only
+because both interpreters import them. `paths.py` finds the checkout at
+runtime, so nothing hardcodes a home directory.
+
+### Policies the game loads
+
+The simulation reads them from `policies-v1/` (git-ignored; unzip
+`policies-v1.zip` there):
+
+| File | Trained by |
+|---|---|
+| `alpha_walking.onnx` | `Mjlab-Velocity-Flat-MicroDuck` |
+| `alpha_standing.onnx` | `Mjlab-StandUp-Flat-MicroDuck` |
+| `alpha_sitstand.onnx` | `Mjlab-SitStand-Flat-MicroDuck` |
+| `alpha_ground_pick.onnx` | `Mjlab-GroundPick-Flat-MicroDuck` |
+| `roulade.onnx` | `Mjlab-Roulade-Flat-MicroDuck` |
+| `ball_kick_speed_right.onnx`, `ball_kick_speed_left.onnx` | `Mjlab-BallKickSpeed-{Right,Left}-Flat-MicroDuck` |
+
+Without the two BallKickSpeed files the game falls back to
+`ball_kick_right.onnx` / `ball_kick_left.onnx` (fixed-strength kicks). To
+replace any of them, export your own run with `scripts/export.py` (see
+[Train, watch, export](#train-watch-export)) under the same file name.
 
 **Vision.** Four coloured fiducials give a one-off homography into a metric
 top-down canvas, where the ball is a blob of known size. It is picked by
@@ -211,19 +230,37 @@ src/mjlab_microduck/
 │   ├── __init__.py                   # task registration (base + backlash variants)
 │   ├── mdp.py                        # rewards, events, observations, custom classes
 │   ├── backlash.py                   # make_backlash_variant() env-cfg wrapper
+│   ├── symmetry.py                   # 61-D left/right mirror tables (mirror loss, mirror_policy.py)
+│   ├── slope_terrain.py              # flat + ramp terrain for RollerSlope
+│   ├── testbench_env_cfg.py          # single-XL330 test bench env (testbench_sim2real.py)
 │   └── microduck_*_env_cfg.py        # one cfg module per task family
+├── export.py                         # checkpoint -> ONNX with the obs normalizer baked in
+├── publish/                          # `uv run publish`: manifest + checks + Hub upload
+├── sim/                              # `uv run duck-body`: a simulated body (+ camera, ToF) served to the real robotd
 ├── train_cli.py                      # `train` script (identical to mjlab's)
 ├── train_hook.py                     # intercepts `train ... --hf-jobs`
 └── hf_jobs.py                        # Hugging Face Jobs submission
 
+scripts/                              # standalone tools, see "Scripts" below
+tests/                                # CPU-only regression tests
+docs/                                 # design notes and plans
+policies-v1.zip                       # the ONNX policies the rayuela game loads
+
 ros2_microduck/src/                   # the rayuela game (ROS 2 Humble)
 ├── rayuela_msgs/                     # TargetCasilla message
-└── rayuela/rayuela/
-    ├── sim_node.py, sim_worker.py    # MuJoCo + policies (venv worker + bridge)
-    ├── vision_node.py                # rectify, find the ball, report the casilla
-    ├── control_node.py               # drive to the casilla and back to HOME
-    ├── board_geometry.py             # board layout, camera, measured kick tables
-    └── teleop_keyboard.py            # manual driving and tricks
+└── rayuela/
+    ├── launch/rayuela.launch.py
+    └── rayuela/
+        ├── sim_node.py               # MuJoCo + policies in one rclpy process (XML actuators)
+        ├── sim_worker.py             # the same with BAM actuators, in the venv
+        ├── bridge_node.py            # ROS side of sim_worker
+        ├── rayuela_ipc.py            # Unix-socket wire format between the two
+        ├── kick_command.py           # behavior_cmd kick grammar
+        ├── paths.py                  # finds the checkout at runtime
+        ├── vision_node.py            # rectify, find the ball, report the casilla
+        ├── control_node.py           # drive to the casilla and back to HOME
+        ├── board_geometry.py         # board layout, camera, measured kick tables
+        └── teleop_keyboard.py        # manual driving and tricks
 ```
 
 Conventions worth knowing:
@@ -247,6 +284,39 @@ Conventions worth knowing:
 [AGENTS.md](AGENTS.md) documents the env-building workflow and the reward-design
 rules learned across the project (also aimed at AI coding agents working in
 this repo).
+
+## Scripts
+
+Run them from the repo root with `uv run python scripts/<name>.py --help` for
+the full options.
+
+| Script | What it is for |
+|---|---|
+| **Policies** | |
+| `export.py` | Checkpoint (local or wandb) to ONNX with the observation normalizer baked in. The only safe export path |
+| `infer_policy.py` | CPU MuJoCo rehearsal of a deployment: hot-swaps walk / stand / tricks / kicks from the keyboard, BAM actuators as in training (`--no-bam` for XML PD). `--save-csv` and `--record` log runs for sim2real |
+| `mirror_policy.py` | Turns a one-footed policy into its mirror twin (right kick to left kick); `--export SRC DST` bakes the mirror into a standalone `.onnx` |
+| `play_latest.py` | Finds a user's latest run in the `pollen-robotics/mjlab_microduck` wandb project (optionally only `--crouch`, `--roller`, `--swizzle` or `--slope` runs) and launches `uv run play` on it. Helpers in `wandb_utils.py` |
+| **Evaluation** | |
+| `kick_sweep.py` | Acceptance test for BallKickSpeed: commanded speed against what the ball actually does on the rayuela board. Source of the kick tables in `board_geometry.py` |
+| `onelegged_eval.py` | Headless eval of a OneLeggedStand / OneLeggedHop checkpoint in the real training env: episode length and end cause per spawn type, with `--push` and `--no-com-dr` to separate balance from DR |
+| **Building envs** | |
+| `crouch_pose_editor.py` | Viewer sliders to compose the roller crouch pose; prints the `CROUCH_POSE` dict to paste into the cfg |
+| `view_slope_terrain.py` | Opens the RollerSlope ramp terrain in the viewer (no policy needed) to check its geometry |
+| **Several ducks** | |
+| `build_multi_duck_scene.py` | Builds an MJCF scene with N copies of the duck from `scene.xml` (`--layout line/race/track`) |
+| `multi_duck_controller.py` | Runs the same walking ONNX on every duck of that scene |
+| **Sim2real / actuator** | |
+| `testbench_sim2real.py` | One XL330 on a test bench: runs a policy in sim (BAM) or on the real servo (rustypot), then plots sim against real |
+| `validate_bam_testbench.py` | Replays real test-bench recordings in MuJoCo with the BAM M6 model and compares the traces (expects a BAM checkout with its data in `~/Rhoban/bam`) |
+| `plot_observations_comparison_plotly.py` | Plots real against simulated observation logs (pickles such as the ones `infer_policy.py --record` writes) |
+| **Hugging Face Jobs** | |
+| `hf/` | Remote training on HF GPUs: `train_hf.py` (old entry point; prefer `uv run train ... --hf-jobs`) and `uploader.py` (checkpoint uploader inside the job). See [scripts/hf/README.md](scripts/hf/README.md) |
+
+Two entry points live in the package instead of `scripts/`: `uv run publish`
+(next section) and `uv run duck-body`, which serves a simulated duck (body,
+camera, ToF sensor) to the real `robotd` daemon over TCP, so the full onboard
+stack can run against MuJoCo (see `src/mjlab_microduck/sim/body_server.py`).
 
 ## Publishing a policy
 
