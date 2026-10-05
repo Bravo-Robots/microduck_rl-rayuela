@@ -132,7 +132,11 @@ The nodes talk on `/rayuela/*` topics:
 
 Launch arguments: `use_bam_bridge`, `use_viewer`, `enable_vision`,
 `enable_control`, `enable_teleop`, and `venv_python` (the interpreter that runs
-`sim_worker.py`, `<repo>/.venv/bin/python3` by default).
+`sim_worker.py`, `<repo>/.venv/bin/python3` by default). The vision debug
+windows are off by default: `vis_raw:=true` shows the angled camera,
+`vis_rect:=true` the rectified board with the detected ball, and
+`vertical_view:=true` rotates that board view (and the published
+`/rayuela/topdown_camera/image_raw`) so the cielo is at the top.
 
 **Python split.** `rclpy` lives in the system Python 3.10 while mujoco /
 onnxruntime / bam live in the project's 3.12 venv. So `sim_worker.py` runs the

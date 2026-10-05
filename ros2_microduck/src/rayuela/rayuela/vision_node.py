@@ -119,7 +119,8 @@ BALL_WARN_GRACE_S = 2.0
 # How the rectified canvas is SHOWN and PUBLISHED: "horizontal" as built, or
 # "vertical" rotated 90 deg counter-clockwise (duck at the bottom, cielo at the
 # top). Purely a view — detection and every canvas<->world conversion run on
-# the unrotated canvas, so this cannot move a landing point.
+# the unrotated canvas, so this cannot move a landing point. This is the
+# default; the `vertical_view` parameter (launch arg) overrides it.
 TOPDOWN_ORIENTATION = "horizontal"
 
 class RayuelaVisionNode(Node):
@@ -128,7 +129,7 @@ class RayuelaVisionNode(Node):
 
         self.declare_parameter("vis_rect", False)
         self.declare_parameter("vis_raw", False)
-        self.declare_parameter("vertical_view", False)
+        self.declare_parameter("vertical_view", TOPDOWN_ORIENTATION == "vertical")
 
         self._homography = None  # angled-pixel -> canvas-pixel, set once calibrated
         self._canvas_size = board_geometry.topdown_canvas_size()
@@ -150,7 +151,8 @@ class RayuelaVisionNode(Node):
         self.vis_raw_img = self.get_parameter("vis_raw").value
         self.vertical_view = self.get_parameter("vertical_view").value
 
-        self.get_logger().info(f"Top-down view: {TOPDOWN_ORIENTATION}")
+        self.get_logger().info(
+            f"Top-down view: {'vertical' if self.vertical_view else 'horizontal'}")
         self.get_logger().info("rayuela_vision_node ready")
 
     def _find_fiducials(self, frame_bgr: np.ndarray) -> dict[str, tuple[float, float]]:
@@ -322,15 +324,15 @@ class RayuelaVisionNode(Node):
             cv2.drawMarker(vis, (cx, cy), (0, 255, 0),
                            cv2.MARKER_CROSS, 24, 2, cv2.LINE_AA)         # crosshair
             cv2.circle(vis, (cx, cy), 4, (0, 0, 255), -1)                 # centre
+            # cv2.putText ignores "\n", so the narrow vertical view gets one
+            # putText per line instead of one long line.
             if not self.vertical_view:
-                cv2.putText(vis, f"px ({cx}, {cy})  world ({wx:.2f}, {wy:.2f})",
-                            (8, 20), cv2.FONT_HERSHEY_SIMPLEX, 1.0,
-                            (127,7,111), 1, cv2.LINE_AA)
+                lines = [f"px ({cx}, {cy})  world ({wx:.2f}, {wy:.2f})"]
             else:
-                cv2.putText(vis, f"px ({cx}, {cy}) \nworld ({wx:.2f}, {wy:.2f})",
-                            (8, 20), cv2.FONT_HERSHEY_SIMPLEX, 1.0,
-                            (127,7,111), 1, cv2.LINE_AA)
-                
+                lines = [f"px ({cx}, {cy})", f"world ({wx:.2f}, {wy:.2f})"]
+            for i, line in enumerate(lines):
+                cv2.putText(vis, line, (8, 20 + 30 * i), cv2.FONT_HERSHEY_SIMPLEX,
+                            1.0, (127,7,111), 1, cv2.LINE_AA)
         else:
             cv2.putText(vis, "ball: not detected", (8, 20),
                         cv2.FONT_HERSHEY_SIMPLEX, 1.0, (0, 0, 255), 1, cv2.LINE_AA)
@@ -349,7 +351,7 @@ class RayuelaVisionNode(Node):
 
         if self.vis_raw_img:
             try:
-                cv2.imshow("Rayuela - Angled Camera", frame_rgb)
+                cv2.imshow("Rayuela - Angled Camera", frame_bgr)  # imshow expects BGR
                 cv2.waitKey(1)
             except cv2.error:
                 pass  # headless mode, no GUI available

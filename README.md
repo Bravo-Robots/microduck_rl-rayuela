@@ -92,7 +92,9 @@ ros2 launch rayuela rayuela.launch.py use_bam_bridge:=true use_viewer:=true
 
 `use_bam_bridge:=true` corre la simulación con el Python del venv
 (`.venv/bin/python3`); si tu venv está en otro sitio, añade
-`venv_python:=/ruta/al/python3`.
+`venv_python:=/ruta/al/python3`. Para ver lo que detecta la visión añade
+`vis_rect:=true` (tablero rectificado con la pelota), `vis_raw:=true` (cámara
+inclinada) y `vertical_view:=true` (tablero en vertical, con el cielo arriba).
 
 El teclado va en otra terminal con ROS cargado:
 
