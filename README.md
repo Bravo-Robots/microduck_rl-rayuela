@@ -33,7 +33,7 @@ tiene ahí, empieza la terminal del venv con `unset PYTHONPATH`.
 
 ```bash
 git clone https://github.com/dasanplaen-cmyk/microduck_rl
-cd microduck_rl
+cd ~/microduck_rl
 git checkout rayuela
 ```
 
@@ -100,9 +100,7 @@ Terminal B:
 
 ```bash
 source /opt/ros/humble/setup.bash
-cd microduck_rl/ros2_microduck
-colcon build --symlink-install
-source install/setup.bash
+cd ~/microduck_rl/ros2_microduck && colcon build --symlink-install && source install/setup.bash
 ros2 interface show rayuela_msgs/msg/TargetCasilla   # comprueba el mensaje propio
 ```
 
@@ -152,10 +150,8 @@ ros2 launch rayuela rayuela.launch.py use_bam_bridge:=true use_viewer:=true enab
 En otra terminal con ROS cargado:
 
 ```bash
-ros2 topic list | grep rayuela
-ros2 topic echo /rayuela/target_casilla
-ros2 topic pub --once /rayuela/behavior_cmd std_msgs/String "data: kick_casilla:7"
-rqt_graph
+cd ~/microduck_rl/ros2_microduck && colcon build --symlink-install && source install/setup.bash
+ros2 run rayuela teleop_keyboard
 ```
 
 ## 7. Ver las redes neuronales (Netron)
