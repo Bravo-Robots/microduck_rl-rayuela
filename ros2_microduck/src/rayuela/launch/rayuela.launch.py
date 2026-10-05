@@ -14,6 +14,9 @@ SIM_WORKER_SCRIPT = str(paths.SIM_WORKER_SCRIPT)
 def generate_launch_description():
     use_viewer = LaunchConfiguration("use_viewer")
     enable_vision = LaunchConfiguration("enable_vision")
+    vis_rect = LaunchConfiguration("vis_rect")
+    vis_raw = LaunchConfiguration("vis_raw")
+    vertical_view = LaunchConfiguration("vertical_view")
     enable_control = LaunchConfiguration("enable_control")
     enable_teleop = LaunchConfiguration("enable_teleop")
     use_bam_bridge = LaunchConfiguration("use_bam_bridge")
@@ -37,6 +40,15 @@ def generate_launch_description():
                 "actuators (lower fidelity, no venv/bam dependency)."
             ),
         ),
+        DeclareLaunchArgument("vis_rect", default_value="false", description=(
+            "Visualize the rectified camera image."
+        )),
+        DeclareLaunchArgument("vis_raw", default_value="false", description=(
+            "Visualize the raw camera image."
+        )),
+        DeclareLaunchArgument("vertical_view", default_value="false", description=(
+            "Display the rectified image in vertical orientation."
+        )),
 
         # use_bam_bridge=false path: everything in one rclpy process.
         Node(
@@ -77,6 +89,7 @@ def generate_launch_description():
             executable="vision_node",
             name="rayuela_vision_node",
             output="screen",
+            parameters=[{"vis_rect": vis_rect, "vis_raw": vis_raw, "vertical_view": vertical_view}],
             condition=IfCondition(enable_vision),
         ),
         Node(
