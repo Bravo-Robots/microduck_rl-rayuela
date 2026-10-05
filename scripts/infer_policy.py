@@ -688,8 +688,10 @@ class PolicyInference:
         3. joint_pos (14D) - relative to default
         4. joint_vel (14D)
         5. actions (14D) - last action
-        6. command (3D) - vel cmd (walking) or normalized body pose cmd (standing)
-        Total: 51D
+        6. command (13D) - [vx, vy, vtheta,                                  ← twist
+                     neck_pitch, head_pitch, head_yaw, head_roll,     ← head_pose deltas
+                     body_x, body_y, body_z, body_roll, body_pitch, body_yaw]  ← body_pose
+        Total: 61D
         """
         obs = []
 

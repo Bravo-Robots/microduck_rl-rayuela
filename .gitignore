@@ -17,6 +17,7 @@ wheels/
 wandb
 logs
 agents
+cheats
 
 *.pch
 nohup.out
@@ -24,6 +25,7 @@ nohup.out
 beyondmimic_motions/
 artifacts/
 *.npz
+.claude/
 
 src/mjlab_microduck/robot/microduck.bak/*
 src/mjlab_microduck/robot/microduck_test/*
@@ -38,4 +40,4 @@ backup_onnx/
 logdir/.claude/
 logdir/
 logdir/.claude/worktrees/
-cheats
+
