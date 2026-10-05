@@ -33,7 +33,7 @@ git checkout rayuela
 ```
 
 Clona donde quieras: la rayuela encuentra el repo sola
-(`ros2_microduck/src/rayuela/rayuela/repo_paths.py`) siempre que compiles
+(`ros2_microduck/src/rayuela/rayuela/paths.py`) siempre que compiles
 `ros2_microduck/` dentro del clon, como en el paso 4. Si compilas el workspace
 en otro sitio, exporta `MICRODUCK_RL_ROOT=/ruta/a/microduck_rl`.
 
@@ -57,7 +57,7 @@ Comprueba que todo está bien:
 
 ```bash
 uv run list-envs                                              # debe listar Mjlab-BallKickSpeed-*
-uv run --with pytest pytest tests/test_ball_kick_speed_cfg.py tests/test_rayuela_repo_paths.py # tests en CPU
+uv run --with pytest pytest tests/test_ball_kick_speed_cfg.py tests/test_rayuela_paths.py # tests en CPU
 ```
 
 Smoke test de entrenamiento (necesita GPU, tarda poco):

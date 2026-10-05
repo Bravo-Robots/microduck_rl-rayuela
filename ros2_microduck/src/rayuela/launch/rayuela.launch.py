@@ -4,11 +4,11 @@ from launch.conditions import IfCondition, UnlessCondition
 from launch.substitutions import LaunchConfiguration, PythonExpression
 from launch_ros.actions import Node
 
-from rayuela import repo_paths
+from rayuela import paths
 
-# Resolved from wherever the checkout lives (rayuela/repo_paths.py); override
+# Resolved from wherever the checkout lives (rayuela/paths.py); override
 # with MICRODUCK_RL_ROOT, or venv_python:=... for a venv outside the repo.
-SIM_WORKER_SCRIPT = repo_paths.sim_worker_script()
+SIM_WORKER_SCRIPT = str(paths.SIM_WORKER_SCRIPT)
 
 
 def generate_launch_description():
@@ -25,7 +25,7 @@ def generate_launch_description():
         DeclareLaunchArgument("enable_control", default_value="true"),
         DeclareLaunchArgument("enable_teleop", default_value="false"),
         DeclareLaunchArgument(
-            "venv_python", default_value=repo_paths.venv_python(),
+            "venv_python", default_value=str(paths.VENV_PYTHON),
             description="Interpreter of the project venv (uv sync) that runs sim_worker.py.",
         ),
         DeclareLaunchArgument(

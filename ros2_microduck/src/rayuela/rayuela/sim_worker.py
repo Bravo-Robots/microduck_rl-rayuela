@@ -27,15 +27,15 @@ import numpy as np
 
 _PKG_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))  # .../src/rayuela
 sys.path.insert(0, _PKG_DIR)
-from rayuela import board_geometry, kick_command, rayuela_ipc as ipc, repo_paths  # noqa: E402
+from rayuela import board_geometry, kick_command, rayuela_ipc as ipc, paths  # noqa: E402
 
-sys.path.append(repo_paths.scripts_dir())
+sys.path.append(str(paths.SCRIPTS_DIR))
 from infer_policy import (  # noqa: E402
     BAM_KP_FW, BAM_VIN_MIN, PolicyInference, load_bam_model, load_mujoco_with_bam,
 )
 
-XML_PATH = repo_paths.scene_xml()
-POLICIES_DIR = repo_paths.policies_dir()
+XML_PATH = str(paths.SCENE_XML)
+POLICIES_DIR = str(paths.POLICIES_DIR)
 
 CONTROL_DECIMATION = 4
 CONTROL_TIMESTEP = 0.005  # policies trained at 50Hz = decimation(4) * 0.005s

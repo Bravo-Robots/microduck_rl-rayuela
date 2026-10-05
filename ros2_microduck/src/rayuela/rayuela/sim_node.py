@@ -20,14 +20,14 @@ from rclpy.qos import QoSDurabilityPolicy, QoSProfile
 from sensor_msgs.msg import CameraInfo, Image
 from std_msgs.msg import String
 
-from rayuela import board_geometry, kick_command, repo_paths
+from rayuela import board_geometry, kick_command, paths
 
 import sys
-sys.path.append(repo_paths.scripts_dir())
+sys.path.append(str(paths.SCRIPTS_DIR))
 from infer_policy import PolicyInference  # noqa: E402
 
-XML_PATH = repo_paths.scene_xml()
-POLICIES_DIR = repo_paths.policies_dir()
+XML_PATH = str(paths.SCENE_XML)
+POLICIES_DIR = str(paths.POLICIES_DIR)
 
 CONTROL_DECIMATION = 4
 IMAGE_PUBLISH_EVERY_N_CONTROL_STEPS = 3  # ~50Hz / 3 ≈ 16Hz
