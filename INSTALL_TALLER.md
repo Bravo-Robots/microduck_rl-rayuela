@@ -115,12 +115,12 @@ Los `.onnx` no están en git (`.gitignore`). La simulación los busca en
 | `roulade.onnx` | `Mjlab-Roulade-Flat-MicroDuck` |
 | `ball_kick_speed_right.onnx`, `ball_kick_speed_left.onnx` | `Mjlab-BallKickSpeed-{Right,Left}-Flat-MicroDuck` |
 
+Descomprimir el paquete `policies-v1.zip`, donde estaran las polizas principales
+para correr el juego de la rayuela.
+
 Si no están las dos de BallKickSpeed, se usan `ball_kick_right.onnx` y
 `ball_kick_left.onnx` (patada de fuerza fija). Para generar cualquiera desde un
 run de wandb, en la terminal A:
-
-Descomprimir el paquete `policies-v1.zip`, donde estaran las polizas principales
-para correr el juego de la rayuela.
 
 ```bash
 uv run scripts/export.py <TASK_ID> --wandb-run-path <entidad/proyecto/run_id>
