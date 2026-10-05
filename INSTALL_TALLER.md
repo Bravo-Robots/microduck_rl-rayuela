@@ -12,9 +12,10 @@ entornos Python separados a propósito** y conviene no mezclarlos:
 por eso la simulación corre en el venv (`sim_worker.py`) y habla con ROS por un
 socket Unix (`bridge_node.py`, `rayuela_ipc.py`).
 
-**Regla de oro:** usa una terminal para `uv` y otra para ROS 2. No pongas
-`source /opt/ros/humble/setup.bash` en tu `~/.bashrc`: el `PYTHONPATH` de ROS se
-cuela en el venv y rompe las importaciones.
+**Regla de oro:** usa una terminal para `uv` y otra para ROS 2. Lo ideal es no
+poner `source /opt/ros/humble/setup.bash` en tu `~/.bashrc`: el `PYTHONPATH` de
+ROS (paquetes de Python 3.10) se cuela en el venv de 3.12. Si tu máquina ya lo
+tiene ahí, empieza la terminal del venv con `unset PYTHONPATH`.
 
 ## 0. Requisitos
 
@@ -41,6 +42,7 @@ en otro sitio, exporta `MICRODUCK_RL_ROOT=/ruta/a/microduck_rl`.
 Terminal A, **sin** ROS cargado:
 
 ```bash
+unset PYTHONPATH                                  # solo si tu ~/.bashrc carga ROS
 curl -LsSf https://astral.sh/uv/install.sh | sh   # instala uv
 exec $SHELL                                       # recarga el PATH
 
@@ -176,7 +178,8 @@ uv run scripts/infer_policy.py --walking policies-v1/alpha_walking.onnx \
 | Síntoma | Causa | Arreglo |
 |---|---|---|
 | `ModuleNotFoundError: rclpy` dentro de `uv run` | Es lo esperado: rclpy no está en el venv | Usa la terminal B para ROS |
-| Errores raros de import en `uv run` | ROS cargado en esa terminal | Abre una terminal limpia sin `source /opt/ros/...` |
+| Errores raros de import en `uv run` | ROS cargado en esa terminal | `unset PYTHONPATH` o abre una terminal sin `source /opt/ros/...` |
+| `No module named 'lark'` al arrancar pytest | Con ROS cargado, pytest intenta cargar los plugins de pytest de ROS (Python 3.10) | `pyproject.toml` ya los bloquea; si aparece con otro plugin, `unset PYTHONPATH` |
 | `IndexError` en `select_gpus()` al entrenar en ARM | Torch sin CUDA | Ver la sección aarch64 de `AGENTS.md` |
 | `sim_worker.py` no arranca | No existe `<repo>/.venv` | Ejecuta `uv sync` (paso 2) o pasa `venv_python:=...` |
 | `Could not find the microduck_rl checkout` | El workspace de ROS 2 está fuera del clon | `export MICRODUCK_RL_ROOT=/ruta/a/microduck_rl` |
