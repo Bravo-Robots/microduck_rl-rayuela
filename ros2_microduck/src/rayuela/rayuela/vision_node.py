@@ -125,6 +125,11 @@ TOPDOWN_ORIENTATION = "horizontal"
 class RayuelaVisionNode(Node):
     def __init__(self):
         super().__init__("rayuela_vision_node")
+
+        self.declare_parameter("vis_rect", False)
+        self.declare_parameter("vis_raw", False)
+        self.declare_parameter("vertical_view", False)
+
         self._homography = None  # angled-pixel -> canvas-pixel, set once calibrated
         self._canvas_size = board_geometry.topdown_canvas_size()
 
@@ -137,15 +142,15 @@ class RayuelaVisionNode(Node):
         self.ball_pub = self.create_publisher(PointStamped, "/rayuela/ball/position", 10)
         self.target_pub = self.create_publisher(TargetCasilla, "/rayuela/target_casilla", 10)
         self.topdown_pub = self.create_publisher(Image, "/rayuela/topdown_camera/image_raw", 10)
-        self.create_subscription(String, "/rayuela/behavior_cmd", self._on_behavior_cmd, 10)
-
-        self.vis_rectify_img = False   # debug window with the rectified canvas
-        self.vis_raw_img = False      # debug window with the raw angled feed
         
-        self._vertical_view = TOPDOWN_ORIENTATION == "vertical"
-        self.get_logger().info(f"Top-down view: {TOPDOWN_ORIENTATION}")
+        self.create_subscription(String, "/rayuela/behavior_cmd", self._on_behavior_cmd, 10)
         self.create_subscription(Image, "/rayuela/angled_camera/image_raw", self._on_image, 10)
 
+        self.vis_rectify_img = self.get_parameter("vis_rect").value
+        self.vis_raw_img = self.get_parameter("vis_raw").value
+        self.vertical_view = self.get_parameter("vertical_view").value
+
+        self.get_logger().info(f"Top-down view: {TOPDOWN_ORIENTATION}")
         self.get_logger().info("rayuela_vision_node ready")
 
     def _find_fiducials(self, frame_bgr: np.ndarray) -> dict[str, tuple[float, float]]:
@@ -286,7 +291,7 @@ class RayuelaVisionNode(Node):
 
     def _oriented(self, img: np.ndarray) -> np.ndarray:
         """The canvas as it should be SHOWN (see TOPDOWN_ORIENTATION)."""
-        if not self._vertical_view:
+        if not self.vertical_view:
             return img
         return cv2.rotate(img, cv2.ROTATE_90_COUNTERCLOCKWISE)
 
@@ -297,7 +302,7 @@ class RayuelaVisionNode(Node):
         counter-clockwise rotation of a ``width``-wide image sends (x, y) to
         (y, width - 1 - x).
         """
-        if not self._vertical_view:
+        if not self.vertical_view:
             return x, y
         return y, width - 1 - x
 
@@ -317,9 +322,15 @@ class RayuelaVisionNode(Node):
             cv2.drawMarker(vis, (cx, cy), (0, 255, 0),
                            cv2.MARKER_CROSS, 24, 2, cv2.LINE_AA)         # crosshair
             cv2.circle(vis, (cx, cy), 4, (0, 0, 255), -1)                 # centre
-            cv2.putText(vis, f"px ({cx}, {cy})  world ({wx:.2f}, {wy:.2f})",
-                        (8, 20), cv2.FONT_HERSHEY_SIMPLEX, 1.0,
-                        (127,7,111), 1, cv2.LINE_AA)
+            if not self.vertical_view:
+                cv2.putText(vis, f"px ({cx}, {cy})  world ({wx:.2f}, {wy:.2f})",
+                            (8, 20), cv2.FONT_HERSHEY_SIMPLEX, 1.0,
+                            (127,7,111), 1, cv2.LINE_AA)
+            else:
+                cv2.putText(vis, f"px ({cx}, {cy}) \nworld ({wx:.2f}, {wy:.2f})",
+                            (8, 20), cv2.FONT_HERSHEY_SIMPLEX, 1.0,
+                            (127,7,111), 1, cv2.LINE_AA)
+                
         else:
             cv2.putText(vis, "ball: not detected", (8, 20),
                         cv2.FONT_HERSHEY_SIMPLEX, 1.0, (0, 0, 255), 1, cv2.LINE_AA)
