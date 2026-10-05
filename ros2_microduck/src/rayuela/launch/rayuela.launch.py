@@ -6,7 +6,8 @@ from launch_ros.actions import Node
 
 from rayuela import paths
 
-VENV_PYTHON = str(paths.VENV_PYTHON)
+# Resolved from wherever the checkout lives (rayuela/paths.py); override
+# with MICRODUCK_RL_ROOT, or venv_python:=... for a venv outside the repo.
 SIM_WORKER_SCRIPT = str(paths.SIM_WORKER_SCRIPT)
 
 
@@ -16,12 +17,17 @@ def generate_launch_description():
     enable_control = LaunchConfiguration("enable_control")
     enable_teleop = LaunchConfiguration("enable_teleop")
     use_bam_bridge = LaunchConfiguration("use_bam_bridge")
+    venv_python = LaunchConfiguration("venv_python")
 
     return LaunchDescription([
         DeclareLaunchArgument("use_viewer", default_value="false"),
         DeclareLaunchArgument("enable_vision", default_value="true"),
         DeclareLaunchArgument("enable_control", default_value="true"),
         DeclareLaunchArgument("enable_teleop", default_value="false"),
+        DeclareLaunchArgument(
+            "venv_python", default_value=str(paths.VENV_PYTHON),
+            description="Interpreter of the project venv (uv sync) that runs sim_worker.py.",
+        ),
         DeclareLaunchArgument(
             "use_bam_bridge", default_value="false",
             description=(
@@ -52,14 +58,14 @@ def generate_launch_description():
             condition=IfCondition(use_bam_bridge),
         ),
         ExecuteProcess(
-            cmd=[VENV_PYTHON, SIM_WORKER_SCRIPT, "--use-viewer"],
+            cmd=[venv_python, SIM_WORKER_SCRIPT, "--use-viewer"],
             output="screen",
             condition=IfCondition(PythonExpression(
                 ["'", use_bam_bridge, "' == 'true' and '", use_viewer, "' == 'true'"]
             )),
         ),
         ExecuteProcess(
-            cmd=[VENV_PYTHON, SIM_WORKER_SCRIPT],
+            cmd=[venv_python, SIM_WORKER_SCRIPT],
             output="screen",
             condition=IfCondition(PythonExpression(
                 ["'", use_bam_bridge, "' == 'true' and '", use_viewer, "' == 'false'"]

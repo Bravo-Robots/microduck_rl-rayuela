@@ -107,3 +107,12 @@ name = "pytorch-cu129"
 url = "https://download.pytorch.org/whl/cu129"
 # explicit: only packages that name this index resolve from it.
 explicit = true
+
+[tool.pytest.ini_options]
+# A terminal with ROS 2 Humble sourced puts /opt/ros/humble/... on PYTHONPATH,
+# and pytest then auto-loads ROS's own pytest plugins (Python 3.10, needing
+# `lark` and friends) into the venv's 3.12 pytest, which dies before collecting
+# a single test (`ModuleNotFoundError: No module named 'lark'`, 2026-10-05).
+# These are their entry-point names in Humble; no test here uses them, and
+# blocking a plugin that is not installed is a no-op.
+addopts = "-p no:launch_testing -p no:launch_pytest -p no:launch_ros -p no:ament_lint"

@@ -1,326 +1,193 @@
-# Microduck RL
+# Instalación para el taller: Microduck RL + rayuela (ROS 2)
 
-<img width="2215" height="884" alt="image" src="https://github.com/user-attachments/assets/5db7cc83-b3ce-4f7c-83f0-0572a63baed7" />
+> **Información adicional del proyecto** (tareas, modelo de actuadores, modelos
+> del robot, la rayuela en detalle y cómo publicar una política):
+> [README_PROYECTO.md](README_PROYECTO.md), en inglés. Las reglas de diseño de
+> recompensas y el flujo para crear tareas nuevas están en [AGENTS.md](AGENTS.md).
 
+Guía paso a paso para dejar listo el proyecto antes del taller. Hay **dos
+entornos Python separados a propósito** y conviene no mezclarlos:
 
-RL training environments for [Microduck](https://github.com/pollen-robotics/microduck) —
-a ~800 g, ~25 cm tall bipedal robot — built on
-[mjlab](https://github.com/mujocolab/mjlab) (MuJoCo Warp) with PPO.
-Policies are trained here at 50 Hz, exported to ONNX, and deployed on the real
-robot by the runtime in [pollen-robotics/microduck](https://github.com/pollen-robotics/microduck).
+| Entorno | Python | Qué contiene | Para qué |
+|---|---|---|---|
+| venv del proyecto (`.venv/`, gestionado por `uv`) | 3.12 | mjlab, MuJoCo Warp, torch, rsl_rl, onnxruntime, BAM | Entrenar, exportar a ONNX, simular con los actuadores BAM |
+| ROS 2 Humble (Python del sistema) | 3.10 | rclpy, mensajes, colcon, OpenCV | Los nodos de la rayuela (visión, control, teleop, puente) |
 
-<!-- HERO VIDEO — real robot montage: walking, standup, roulade, roller skating.
-     Keep it short (~30 s) and real-robot-first: this is the "why should I care" shot. -->
+`rclpy` solo existe para el Python 3.10 de Humble y `bam` exige Python ≥ 3.12,
+por eso la simulación corre en el venv (`sim_worker.py`) y habla con ROS por un
+socket Unix (`bridge_node.py`, `rayuela_ipc.py`).
 
-https://github.com/user-attachments/assets/50c3d537-8db2-4005-9d9c-3472faeec4d0
+**Regla de oro:** usa una terminal para `uv` y otra para ROS 2. Lo ideal es no
+poner `source /opt/ros/humble/setup.bash` en tu `~/.bashrc`: el `PYTHONPATH` de
+ROS (paquetes de Python 3.10) se cuela en el venv de 3.12. Si tu máquina ya lo
+tiene ahí, empieza la terminal del venv con `unset PYTHONPATH`.
 
-The repo encodes the full sim2real recipe: [BAM](https://github.com/Rhoban/bam)
-actuator physics, domain randomization, backlash simulation, and the
-reward-design lessons that made it work
-(see [AGENTS.md](AGENTS.md) for the distilled playbook).
+## 0. Requisitos
 
-## Quickstart
+- Ubuntu 22.04 (es la plataforma oficial de ROS 2 Humble).
+- GPU NVIDIA con driver reciente **solo para entrenar**. La demo de la rayuela y
+  `scripts/infer_policy.py` corren en CPU.
+- Unos 10 GB libres (torch + CUDA + ROS 2).
 
-Requires a CUDA GPU (training runs through MuJoCo Warp) and [uv](https://docs.astral.sh/uv/).
-
-> **On ARM boxes (DGX Spark / GB10, Jetson):** `uv sync` pulls ~2 GB of CUDA
-> wheels on first run and uv's default 30 s HTTP timeout can abort mid-download.
-> Export `UV_HTTP_TIMEOUT=600` for the first sync. 
+## 1. Clonar el repositorio
 
 ```bash
-git clone https://github.com/pollen-robotics/microduck_rl
+git clone https://github.com/dasanplaen-cmyk/microduck_rl
 cd microduck_rl
-
-# train the walking policy (uses your GPU; ~1-2 h for a usable gait at 4096 envs)
-uv run train Mjlab-Velocity-Flat-MicroDuck --env.scene.num-envs 4096
-
-# watch a trained policy in the viewer
-uv run play Mjlab-Velocity-Flat-MicroDuck --wandb-run-path <entity/project/run_id>
-
-# export to ONNX for deployment
-uv run scripts/export.py Mjlab-Velocity-Flat-MicroDuck --wandb-run-path <...>
-uv run publish --onnx output.onnx --repo <user>/microduck-<name> --kind episodic --duration-s 4.0   # share it (see "Publishing a policy")
-
-# drive the exported policy in CPU MuJoCo with the keyboard
-uv run scripts/infer_policy.py --walking output.onnx
+git checkout rayuela
 ```
 
-Resume from a checkpoint:
+Clona donde quieras: la rayuela encuentra el repo sola
+(`ros2_microduck/src/rayuela/rayuela/paths.py`) siempre que compiles
+`ros2_microduck/` dentro del clon, como en el paso 4. Si compilas el workspace
+en otro sitio, exporta `MICRODUCK_RL_ROOT=/ruta/a/microduck_rl`.
+
+## 2. Entorno Python del proyecto (uv + venv 3.12)
+
+Terminal A, **sin** ROS cargado:
 
 ```bash
-uv run train Mjlab-Velocity-Flat-MicroDuck --env.scene.num-envs 4096 \
-    --agent.run-name resume --agent.load-checkpoint model_29999.pt --agent.resume True
+unset PYTHONPATH                                  # solo si tu ~/.bashrc carga ROS
+curl -LsSf https://astral.sh/uv/install.sh | sh   # instala uv
+exec $SHELL                                       # recarga el PATH
+
+uv sync          # crea .venv/ con Python 3.12 y todas las dependencias
 ```
 
-No GPU? Add `--hf-jobs` to any train command to run it on Hugging Face Jobs
-instead of locally (see [scripts/hf/README.md](scripts/hf/README.md)).
+`uv` descarga Python 3.12 si no lo tienes. En máquinas ARM (DGX Spark, Jetson)
+exporta antes `UV_HTTP_TIMEOUT=600`, porque la primera descarga de CUDA es
+grande.
 
-## Tasks
+Comprueba que todo está bien:
 
-`uv run list-envs` prints the live registry. Flat/Rough variants exist where noted.
+```bash
+uv run list-envs                                              # debe listar Mjlab-BallKickSpeed-*
+uv run --with pytest pytest tests/test_ball_kick_speed_cfg.py tests/test_rayuela_paths.py # tests en CPU
+```
 
-<!-- SHOWCASE GRID — one short GIF per task family (sim or real), 3 per row.
-     Priority order if you only record a few: Velocity, VelStand (fall+recover),
-     Roulade, SitStand, Rollers/Swizzle, BallKick. -->
+Smoke test de entrenamiento (necesita GPU, tarda poco):
 
-| Task id | Terrain | Description |
+```bash
+uv run train Mjlab-BallKickSpeed-Right-Flat-MicroDuck \
+    --env.scene.num-envs 64 --agent.max_iterations 5
+```
+
+## 3. ROS 2 Humble (Python del sistema)
+
+Terminal B. Instalación estándar de Humble por apt
+([guía oficial](https://docs.ros.org/en/humble/Installation/Ubuntu-Install-Debs.html)):
+
+```bash
+sudo apt update && sudo apt install -y software-properties-common curl
+sudo add-apt-repository universe
+sudo curl -sSL https://raw.githubusercontent.com/ros/rosdistro/master/ros.key \
+    -o /usr/share/keyrings/ros-archive-keyring.gpg
+echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/ros-archive-keyring.gpg] \
+http://packages.ros.org/ros2/ubuntu $(. /etc/os-release && echo $UBUNTU_CODENAME) main" \
+    | sudo tee /etc/apt/sources.list.d/ros2.list > /dev/null
+sudo apt update
+sudo apt install -y ros-humble-desktop python3-colcon-common-extensions \
+    python3-numpy python3-opencv ros-humble-tf2-ros
+```
+
+`vision_node` usa OpenCV y numpy del sistema; con el modo puente
+(`use_bam_bridge:=true`) no hace falta instalar MuJoCo ni onnxruntime en el
+Python de ROS.
+
+## 4. Compilar el workspace de la rayuela
+
+Terminal B:
+
+```bash
+source /opt/ros/humble/setup.bash
+cd microduck_rl/ros2_microduck
+colcon build --symlink-install
+source install/setup.bash
+ros2 interface show rayuela_msgs/msg/TargetCasilla   # comprueba el mensaje propio
+```
+
+## 5. Políticas ONNX
+
+Los `.onnx` no están en git (`.gitignore`). La simulación los busca en
+`microduck_rl/policies-v1/`:
+
+| Archivo | Tarea de origen |
+|---|---|
+| `alpha_walking.onnx` | `Mjlab-Velocity-Flat-MicroDuck` |
+| `alpha_standing.onnx` | `Mjlab-StandUp-Flat-MicroDuck` |
+| `alpha_sitstand.onnx` | `Mjlab-SitStand-Flat-MicroDuck` |
+| `alpha_ground_pick.onnx` | `Mjlab-GroundPick-Flat-MicroDuck` |
+| `roulade.onnx` | `Mjlab-Roulade-Flat-MicroDuck` |
+| `ball_kick_speed_right.onnx`, `ball_kick_speed_left.onnx` | `Mjlab-BallKickSpeed-{Right,Left}-Flat-MicroDuck` |
+
+Descomprimir el paquete `policies-v1.zip`, donde estaran las polizas principales
+para correr el juego de la rayuela.
+
+Si no están las dos de BallKickSpeed, se usan `ball_kick_right.onnx` y
+`ball_kick_left.onnx` (patada de fuerza fija). Para generar cualquiera desde un
+run de wandb, en la terminal A:
+
+```bash
+uv run scripts/export.py <TASK_ID> --wandb-run-path <entidad/proyecto/run_id>
+```
+
+Exporta siempre con `scripts/export.py`: mete el normalizador de observaciones
+dentro del ONNX. 
+
+`scripts/mirror_policy.py` genera la pierna izquierda a partir de la derecha.
+
+## 6. Lanzar la rayuela
+
+Terminal B (con `install/setup.bash` cargado):
+
+```bash
+ros2 launch rayuela rayuela.launch.py use_bam_bridge:=true use_viewer:=true enable_teleop:=true
+```
+
+- `use_bam_bridge:=true` lanza `sim_worker.py` con el Python del venv
+  (`<repo>/.venv/bin/python3`) y `bridge_node` en ROS. Si tu venv está en otro
+  sitio, añade `venv_python:=/ruta/al/python3`.
+- En la ventana de teleop: dígitos 1–9 patean a esa casilla, 0 al cielo.
+
+En otra terminal con ROS cargado:
+
+```bash
+ros2 topic list | grep rayuela
+ros2 topic echo /rayuela/target_casilla
+ros2 topic pub --once /rayuela/behavior_cmd std_msgs/String "data: kick_casilla:7"
+rqt_graph
+```
+
+## 7. Ver las redes neuronales (Netron)
+
+Para el bloque de PPO se abre la política exportada en
+[Netron](https://netron.app), un visor de redes. No instala nada en el venv:
+
+```bash
+uvx netron policies-v1/ball_kick_speed_right.onnx   # abre el navegador en localhost
+```
+
+O arrastra el `.onnx` a https://netron.app (el archivo se procesa en tu navegador).
+
+## 8. Sin ROS 2 (plan B)
+
+En la terminal A, la misma simulación con teclado y sin ROS:
+
+```bash
+uv run scripts/infer_policy.py --walking policies-v1/alpha_walking.onnx \
+    --standing policies-v1/alpha_standing.onnx \
+    --kick-right policies-v1/ball_kick_speed_right.onnx \
+    --kick-speed-commanded --kick-speed 1.0 --new-cmd-obs
+```
+
+## Problemas frecuentes
+
+| Síntoma | Causa | Arreglo |
 |---|---|---|
-| `Mjlab-Velocity-{Flat,Rough}-MicroDuck` | flat/rough | **The main task**: walking with velocity commands + head-pose commands |
-| `Mjlab-VelStand-{Flat,Rough}-MicroDuck` | flat/rough | Walking + fall recovery in one policy |
-| `Mjlab-StandUp-{Flat,Rough}-MicroDuck` | flat/rough | Stand up from face-down/face-up/sitting, then hold the stand + body-pose control |
-| `Mjlab-SitStand-{Flat,Rough}-MicroDuck` | flat/rough | Commanded sit ↔ stand in one policy, gently, head commandable |
-| `Mjlab-GroundPick-{Flat,Rough}-MicroDuck` | flat/rough | Crouch and touch the ground with the mouth tip, return to stand |
-| `Mjlab-BallKick-Flat-MicroDuck` | flat | Kick a 70 mm / 15 g ball forward (actor is ball-blind) |
-| `Mjlab-BallKickSpeed-{Left,Right}-Flat-MicroDuck` | flat | The same kick with a **commanded strength**: target ball exit speed rides in the twist vx slot |
-| `Mjlab-Roulade-Flat-MicroDuck` | flat | Forward roll over the head, land back on the feet |
-| `Mjlab-OneLeggedStand-Flat-MicroDuck` | flat | Balance on one foot, the other tucked up, head free to counterbalance |
-| `Mjlab-OneLeggedHop-Flat-MicroDuck` | flat | The same stand, then hopping on it (warm-starts from a Stand checkpoint) |
-| `Mjlab-Velocity-Flat-MicroDuck-Rollers` | flat | Roller-skate velocity tracking (passive wheels under the feet) |
-| `Mjlab-Velocity-Swizzle-MicroDuck` | flat | Classic symmetric swizzle skating |
-| `Mjlab-RollerCrouch-Flat-MicroDuck` | flat | Crouch while gliding on rollers |
-| `Mjlab-RollerSlope-Flat-MicroDuck` | slope | Glide down slopes on rollers |
-| `Mjlab-RollerStandUp-Flat-MicroDuck` | flat | Stand up from the ground onto the wheels |
-| `Mjlab-Spin-Flat-MicroDuck` | flat | Fast spin in place on rollers |
-
-At deployment the runtime hot-swaps these policies (walk / recover / trick)
-behind a shared 61-dimensional observation contract, so any of them can take
-over the robot at any moment. `scripts/infer_policy.py` rehearses exactly that:
-
-```bash
-uv run scripts/infer_policy.py --walking walk.onnx --standing stand.onnx \
-    --sitstand sitstand.onnx --roulade roulade.onnx --new-cmd-obs
-```
-
-Keyboard-driven (velocity commands, `G` ground pick, `Y` sit/stand, `R` roulade,
-`K`/`L` kicks); `--debug`, `--save-csv`, `--record` support sim2real comparisons.
-The servos are simulated with the same BAM M6 XL330 model the policies are
-trained against (voltage control + load-dependent friction, via
-`bam.mujoco.MujocoController`); `--vin` / `--vin-drop-gain` / `--kp-fw` pin the
-training DR ranges to one value, `--no-bam` falls back to the XML PD actuators.
-
-### Backlash variants
-
-Every main task has a **Backlash** twin that trains on a model with ±1° of gear
-play (2° total) in series with each of the 14 servo joints: insert `-Backlash`
-before `MicroDuck` in the task id, e.g. `Mjlab-Velocity-Flat-Backlash-MicroDuck`.
-
-The backlash is modeled properly for sim2real: each servo gets an unactuated
-`passive_<joint>_backlash` hinge, and because the real encoder sits on the
-output side of the play, both the firmware PD emulation
-(`BacklashEncoderBamActuator`) and the `joint_pos`/`joint_vel` observations
-read *through* the backlash (`qpos[servo] + qpos[backlash]`). Observation and
-action dims are unchanged, so ONNX export and the runtime need no changes.
-See `src/mjlab_microduck/tasks/backlash.py`.
-
-## Rayuela — a hopscotch game
-
-<!-- VIDEO — one run: kick, ball lands on a square, duck walks/rolls to it. -->
-
-`ros2_microduck/` is a ROS 2 (Humble) application built on top of these
-policies: the duck kicks a ball onto a hopscotch board, a camera works out
-which square it landed on, and the duck walks — or rolls — to that square.
-It is the end-to-end integration test for the whole policy family.
-
-```bash
-cd ros2_microduck && colcon build --symlink-install && source install/setup.bash
-ros2 launch rayuela rayuela.launch.py            # sim + vision + control + teleop
-ros2 launch rayuela rayuela.launch.py use_bam_bridge:=true   # BAM actuators (as trained)
-```
-
-Four nodes on `/rayuela/*` topics:
-
-| Node | Does |
-|---|---|
-| `sim_node` | MuJoCo + the ONNX policies; publishes the camera, the duck pose and `current_policy` |
-| `vision_node` | Rectifies the angled camera to a metric top-down view, finds the ball, reports the casilla |
-| `control_node` | Drives the duck to the reported casilla and back to HOME |
-| `teleop_keyboard` | Manual driving, tricks, and "kick to casilla N" (digits 1-9, 0 = cielo) |
-
-**Python split.** `rclpy` lives in the system Python 3.10 while mujoco /
-onnxruntime / bam live in the project's 3.12 venv, so the simulation runs in a
-venv worker and talks to ROS over a Unix socket (`rayuela_ipc.py`,
-`bridge_node.py`). `use_bam_bridge:=true` selects that path.
-
-**Vision.** Four coloured fiducials give a one-off homography into a metric
-top-down canvas, where the ball is a blob of known size. It is picked by
-*solidity*, not size or circularity: the duck is orange too, and at the far end
-of the board the homography stretches the ball into a 2:1 ellipse that ruins
-circularity but not convexity. When the duck lies on the ball and the two blobs
-fuse, a Hough fallback recovers the circle.
-
-**Control.** Every command is bang-bang, because the gait has measured dead
-zones: no net motion below 0.25 m/s commanded, and no in-place rotation below
-~1.5 rad/s. Tapering a command to zero looks exactly like a frozen controller.
-
-**Kick calibration.** `scripts/kick_sweep.py` measures, policy in the loop,
-what each commanded speed actually does — travel, exit speed, off-axis angle,
-and whether the duck stayed on its feet. Those sweeps are the source of the
-per-foot tables in `board_geometry.py` that map a casilla to a kick command,
-and the acceptance test for a retrained kick.
-
-**Mirrored policies.** The two kick tasks are exact mirror images and the robot
-is bilaterally symmetric, so `scripts/mirror_policy.py` turns the right-foot
-policy into a left-foot one — permuting and sign-flipping the 61-D observation
-in and the 14-D action out — and can bake that into a standalone `.onnx`. Here
-it beat the separately trained left policy (+1.5 deg of drift mid-range against
-+19.6) and is what makes all ten casillas reachable.
-
-## Actuator model
-
-All tasks use the [BAM](https://github.com/Rhoban/bam) M6 actuator model for
-the Dynamixel XL330 (voltage control law, back-EMF, Coulomb/Stribeck/load-dependent
-friction), with per-env domain randomization on battery voltage, voltage sag
-under load, command delay, and friction magnitude
-(`FrictionDRBamActuator` in `src/mjlab_microduck/actuator/`).
-
-At this scale — tiny servos driving a ~800 g biped — actuator fidelity is most
-of the sim2real gap, which is why the actuator is modeled down to its voltage
-control law instead of an ideal PD.
-
-## Robot models
-
-MJCF models live in `src/mjlab_microduck/robot/microduck/` and are exported
-from Onshape with [onshape-to-robot](https://github.com/Rhoban/onshape-to-robot),
-one `config_mjcf_*.json` per model:
-
-| XML | Used by |
-|---|---|
-| `robot_walk.xml` | Velocity (stripped trunk/head contacts — falling is cheap) |
-| `robot_groundcontact.xml` | VelStand, StandUp, SitStand, GroundPick, BallKick, Roulade (curated collision set for the parts that touch the floor — body can physically lie on the ground; formerly `robot_allcollisions.xml`) |
-| `robot_groundcontact_rollers.xml` | Roller tasks (passive wheels) |
-| `robot_allcollisions.xml` | True full-collision model — every part has a collision geom. No task uses it yet |
-| `robot_*_backlash.xml` | Backlash task variants (generated by `add_backlash.py`) |
-
-`scene*.xml` files wrap the robots with a floor + keyframes (STAND/SIT/FOLD)
-for quick viewing and for `infer_policy.py`.
-
-<!-- IMAGE — side-by-side render: walk model vs rollers model (or a collision-geom
-     visualization). One image here makes the model-variant story instant. -->
-
-## Project structure
-
-```
-src/mjlab_microduck/
-├── robot/
-│   ├── microduck/                    # MJCF exports, export configs, scenes, add_backlash.py
-│   └── microduck_constants.py        # robot cfgs, HOME frame, BAM actuator cfg
-├── actuator/friction_dr_bam.py       # BAM + friction DR + backlash encoder feedback
-├── tasks/
-│   ├── __init__.py                   # task registration (base + backlash variants)
-│   ├── mdp.py                        # rewards, events, observations, custom classes
-│   ├── backlash.py                   # make_backlash_variant() env-cfg wrapper
-│   └── microduck_*_env_cfg.py        # one cfg module per task family
-├── train_cli.py                      # `train` script (identical to mjlab's)
-├── train_hook.py                     # intercepts `train ... --hf-jobs`
-└── hf_jobs.py                        # Hugging Face Jobs submission
-
-ros2_microduck/src/                   # the rayuela game (ROS 2 Humble)
-├── rayuela_msgs/                     # TargetCasilla message
-└── rayuela/rayuela/
-    ├── sim_node.py, sim_worker.py    # MuJoCo + policies (venv worker + bridge)
-    ├── vision_node.py                # rectify, find the ball, report the casilla
-    ├── control_node.py               # drive to the casilla and back to HOME
-    ├── board_geometry.py             # board layout, camera, measured kick tables
-    └── teleop_keyboard.py            # manual driving and tricks
-```
-
-Conventions worth knowing:
-
-- The observation layout is shared across every policy (61-dim actor obs:
-  48 proprioception + commands `[twist(3), head_pose(4), body_pose(6)]`), which
-  is what makes runtime policy hot-swapping possible. Envs that don't use a
-  command slot zero-pad it rather than dropping it.
-- Unactuated joints are all named `passive_*` (roller wheels, backlash
-  hinges); actuators, joint observations and pose rewards select servo joints
-  with `^(?!passive_).*`.
-- Domain-randomization toggles are `ENABLE_*` booleans at the top of each
-  env cfg file.
-- Joint layout (14 servos): 0–4 left leg (hip_yaw, hip_roll, hip_pitch, knee,
-  ankle), 5–8 neck/head (neck_pitch, head_pitch, head_yaw, head_roll),
-  9–13 right leg.
-- The exporter bakes the observation normalizer into the ONNX graph — always
-  deploy ONNX produced by `scripts/export.py`, never a hand-converted
-  checkpoint, or the policy sees unnormalized observations at runtime.
-
-[AGENTS.md](AGENTS.md) documents the env-building workflow and the reward-design
-rules learned across the project (also aimed at AI coding agents working in
-this repo).
-
-## Publishing a policy
-
-`uv run publish` puts a policy on the Hugging Face Hub in the shape the robot's
-daemon loads: one `policy.onnx` with the observation normalizer baked in, a
-`manifest.json` following schema 2 of the
-[microduck policy manifest](https://github.com/pollen-robotics/microduck/blob/main/docs/policy-manifest.md),
-and a README saying how to run it. Anyone with a microduck can then install it
-with one command, no daemon release needed.
-
-```bash
-# From a wandb run — exports through the one safe path, then uploads
-uv run publish --task Mjlab-PoliteBow-Flat-MicroDuck \
-    --wandb-run-path <entity/project/run_id> --checkpoint 3000 \
-    --repo <user>/microduck-polite-bow --kind episodic --duration-s 4.0 \
-    --description "Bows from a two-foot stand and comes back up."
-
-# From an ONNX you already exported (validated, not re-exported)
-uv run publish --onnx output.onnx --repo <user>/microduck-flamingo \
-    --kind perpetual --unwind-s 1.5 --twist-help "[flag, side, 0]"
-
-# A new gait for a slot
-uv run publish --onnx output.onnx --repo <user>/microduck-my-walk --kind perpetual --slot walk
-
-# See what would be uploaded without touching the Hub
-uv run publish --onnx output.onnx --repo <user>/microduck-bow --kind episodic --duration-s 4.0 --dry-run
-```
-
-Then on a robot:
-
-```bash
-sudo robotctl policy add polite-bow <user>/microduck-polite-bow   # episodic: length comes from the manifest
-sudo robotctl policy add flamingo <user>/microduck-flamingo --hold 5   # held pose: you pick how long
-sudo robotctl policy load walk <user>/microduck-my-walk                # gait: into the walk slot
-robotctl robot do polite-bow
-```
-
-What `--kind` means, and what each needs:
-
-- **episodic** — runs for `--duration-s` and returns itself to a standing pose
-  (kicks, roulade, a bow). Add `--chain` if holding the button should repeat it.
-- **perpetual** — runs until told otherwise. Two shapes:
-  - a **gait** (a new walk or stand): add `--slot walk` (or `stand`) and
-    nothing else; the owner installs it with `robotctl policy load walk <repo>`.
-  - a **held pose** (the flamingo): give `--unwind-s`, how long the daemon
-    drives the idle twist (`--idle`, zeros by default) before handing back to
-    the gait, so the robot is not let go of on one foot. The owner runs it as a
-    one-shot with `policy add ... --hold <seconds>`.
-
-Before anything is uploaded, `publish` checks the graph is `[1,61] -> [1,14]`
-(a 51-D legacy policy is refused with a message), runs it on plausible inputs
-and refuses NaNs or a constant output, fills the `training` block from git and
-wandb (task, commit, branch, dirty flag, run, checkpoint), and refuses to
-overwrite an existing `.onnx` in the repo without `--force`. Repos are created
-private; `--no-private` for public, `--tag v1` to tag the revision.
-
-Only constant-command policies are publishable this way. Phase-driven moves
-(the ground pick) and the posture-flag sit↔stand are driven by the daemon
-itself and live in the official set, `pollen-robotics/microduck-policies`.
-
-## Tests
-
-```bash
-uv run --with pytest pytest tests/
-```
-
-CPU-only config-invariant and reward-function regression tests — they lock in
-joint-index mappings, reward sign conventions, and NaN guards.
-
-## Related projects
-
-- [microduck](https://github.com/pollen-robotics/microduck) — the Microduck project home, including the onboard runtime that runs the exported policies
-- [mjlab](https://github.com/mujocolab/mjlab) — the training framework (MuJoCo Warp + rsl_rl)
-- [BAM](https://github.com/Rhoban/bam) — better actuator models, by Rhoban
-
-## License
-
-This project is licensed under the Apache 2.0 License. See the [LICENSE](LICENSE) file for details.
-3D model files are licensed under Creative Commons BY-SA-NC.
+| `ModuleNotFoundError: rclpy` dentro de `uv run` | Es lo esperado: rclpy no está en el venv | Usa la terminal B para ROS |
+| Errores raros de import en `uv run` | ROS cargado en esa terminal | `unset PYTHONPATH` o abre una terminal sin `source /opt/ros/...` |
+| `No module named 'lark'` al arrancar pytest | Con ROS cargado, pytest intenta cargar los plugins de pytest de ROS (Python 3.10) | `pyproject.toml` ya los bloquea; si aparece con otro plugin, `unset PYTHONPATH` |
+| `IndexError` en `select_gpus()` al entrenar en ARM | Torch sin CUDA | Ver la sección aarch64 de `AGENTS.md` |
+| `sim_worker.py` no arranca | No existe `<repo>/.venv` | Ejecuta `uv sync` (paso 2) o pasa `venv_python:=...` |
+| `Could not find the microduck_rl checkout` | El workspace de ROS 2 está fuera del clon | `export MICRODUCK_RL_ROOT=/ruta/a/microduck_rl` |
+| El pato no se mueve en ROS | Faltan ONNX en `policies-v1/` | Paso 5 |
