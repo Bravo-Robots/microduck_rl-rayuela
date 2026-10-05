@@ -119,13 +119,15 @@ Si no están las dos de BallKickSpeed, se usan `ball_kick_right.onnx` y
 `ball_kick_left.onnx` (patada de fuerza fija). Para generar cualquiera desde un
 run de wandb, en la terminal A:
 
+Descomprimir el paquete `policies-v1.zip`, donde estaran las polizas principales
+para correr el juego de la rayuela.
+
 ```bash
 uv run scripts/export.py <TASK_ID> --wandb-run-path <entidad/proyecto/run_id>
 ```
 
 Exporta siempre con `scripts/export.py`: mete el normalizador de observaciones
-dentro del ONNX. El organizador del taller compartirá un paquete con estas
-políticas ya exportadas.
+dentro del ONNX. 
 
 `scripts/mirror_policy.py` genera la pierna izquierda a partir de la derecha.
 
