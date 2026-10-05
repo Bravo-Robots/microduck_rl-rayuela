@@ -20,14 +20,14 @@ from rclpy.qos import QoSDurabilityPolicy, QoSProfile
 from sensor_msgs.msg import CameraInfo, Image
 from std_msgs.msg import String
 
-from rayuela import board_geometry, kick_command
+from rayuela import board_geometry, kick_command, repo_paths
 
 import sys
-sys.path.append('/home/robot/microduck_rl/scripts')
+sys.path.append(repo_paths.scripts_dir())
 from infer_policy import PolicyInference  # noqa: E402
 
-XML_PATH = "/home/robot/microduck_rl/src/mjlab_microduck/robot/microduck/escena_rayuela.xml"
-POLICIES_DIR = "/home/robot/microduck_rl/policies-v1"
+XML_PATH = repo_paths.scene_xml()
+POLICIES_DIR = repo_paths.policies_dir()
 
 CONTROL_DECIMATION = 4
 IMAGE_PUBLISH_EVERY_N_CONTROL_STEPS = 3  # ~50Hz / 3 ≈ 16Hz

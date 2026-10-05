@@ -31,14 +31,10 @@ cd microduck_rl
 git checkout rayuela
 ```
 
-Las rutas de la rayuela están fijadas a `/home/robot/microduck_rl`
-(`ros2_microduck/src/rayuela/launch/rayuela.launch.py`, `sim_node.py`,
-`sim_worker.py`). Si tu clon está en otro sitio, crea un enlace:
-
-```bash
-sudo mkdir -p /home/robot
-sudo ln -s "$PWD" /home/robot/microduck_rl
-```
+Clona donde quieras: la rayuela encuentra el repo sola
+(`ros2_microduck/src/rayuela/rayuela/repo_paths.py`) siempre que compiles
+`ros2_microduck/` dentro del clon, como en el paso 4. Si compilas el workspace
+en otro sitio, exporta `MICRODUCK_RL_ROOT=/ruta/a/microduck_rl`.
 
 ## 2. Entorno Python del proyecto (uv + venv 3.12)
 
@@ -59,7 +55,7 @@ Comprueba que todo está bien:
 
 ```bash
 uv run list-envs                                              # debe listar Mjlab-BallKickSpeed-*
-uv run --with pytest pytest tests/test_ball_kick_speed_cfg.py # tests en CPU
+uv run --with pytest pytest tests/test_ball_kick_speed_cfg.py tests/test_rayuela_repo_paths.py # tests en CPU
 ```
 
 Smoke test de entrenamiento (necesita GPU, tarda poco):
@@ -140,7 +136,8 @@ ros2 launch rayuela rayuela.launch.py use_bam_bridge:=true use_viewer:=true enab
 ```
 
 - `use_bam_bridge:=true` lanza `sim_worker.py` con el Python del venv
-  (`/home/robot/microduck_rl/.venv/bin/python3`) y `bridge_node` en ROS.
+  (`<repo>/.venv/bin/python3`) y `bridge_node` en ROS. Si tu venv está en otro
+  sitio, añade `venv_python:=/ruta/al/python3`.
 - En la ventana de teleop: dígitos 1–9 patean a esa casilla, 0 al cielo.
 
 En otra terminal con ROS cargado:
@@ -152,7 +149,18 @@ ros2 topic pub --once /rayuela/behavior_cmd std_msgs/String "data: kick_casilla:
 rqt_graph
 ```
 
-## 7. Sin ROS 2 (plan B)
+## 7. Ver las redes neuronales (Netron)
+
+Para el bloque de PPO se abre la política exportada en
+[Netron](https://netron.app), un visor de redes. No instala nada en el venv:
+
+```bash
+uvx netron policies-v1/ball_kick_speed_right.onnx   # abre el navegador en localhost
+```
+
+O arrastra el `.onnx` a https://netron.app (el archivo se procesa en tu navegador).
+
+## 8. Sin ROS 2 (plan B)
 
 En la terminal A, la misma simulación con teclado y sin ROS:
 
@@ -170,5 +178,6 @@ uv run scripts/infer_policy.py --walking policies-v1/alpha_walking.onnx \
 | `ModuleNotFoundError: rclpy` dentro de `uv run` | Es lo esperado: rclpy no está en el venv | Usa la terminal B para ROS |
 | Errores raros de import en `uv run` | ROS cargado en esa terminal | Abre una terminal limpia sin `source /opt/ros/...` |
 | `IndexError` en `select_gpus()` al entrenar en ARM | Torch sin CUDA | Ver la sección aarch64 de `AGENTS.md` |
-| `sim_worker.py` no arranca | No existe `/home/robot/microduck_rl/.venv` | Crea el enlace del paso 1 y ejecuta `uv sync` |
+| `sim_worker.py` no arranca | No existe `<repo>/.venv` | Ejecuta `uv sync` (paso 2) o pasa `venv_python:=...` |
+| `Could not find the microduck_rl checkout` | El workspace de ROS 2 está fuera del clon | `export MICRODUCK_RL_ROOT=/ruta/a/microduck_rl` |
 | El pato no se mueve en ROS | Faltan ONNX en `policies-v1/` | Paso 5 |

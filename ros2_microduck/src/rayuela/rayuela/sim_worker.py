@@ -8,8 +8,8 @@ policies were actually trained against, unlike the plain-XML-actuator
 fallback sim_node.py uses (kept for machines where a working `bam` install
 isn't available to whichever Python has rclpy).
 
-Run with the venv interpreter, e.g.:
-    /home/robot/microduck_rl/.venv/bin/python3 sim_worker.py --use-viewer
+Run with the venv interpreter, from the repo root, e.g.:
+    .venv/bin/python3 ros2_microduck/src/rayuela/rayuela/sim_worker.py --use-viewer
 """
 
 import argparse
@@ -27,15 +27,15 @@ import numpy as np
 
 _PKG_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))  # .../src/rayuela
 sys.path.insert(0, _PKG_DIR)
-from rayuela import board_geometry, kick_command, rayuela_ipc as ipc  # noqa: E402
+from rayuela import board_geometry, kick_command, rayuela_ipc as ipc, repo_paths  # noqa: E402
 
-sys.path.append('/home/robot/microduck_rl/scripts')
+sys.path.append(repo_paths.scripts_dir())
 from infer_policy import (  # noqa: E402
     BAM_KP_FW, BAM_VIN_MIN, PolicyInference, load_bam_model, load_mujoco_with_bam,
 )
 
-XML_PATH = "/home/robot/microduck_rl/src/mjlab_microduck/robot/microduck/escena_rayuela.xml"
-POLICIES_DIR = "/home/robot/microduck_rl/policies-v1"
+XML_PATH = repo_paths.scene_xml()
+POLICIES_DIR = repo_paths.policies_dir()
 
 CONTROL_DECIMATION = 4
 CONTROL_TIMESTEP = 0.005  # policies trained at 50Hz = decimation(4) * 0.005s
