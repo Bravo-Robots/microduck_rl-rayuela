@@ -8,8 +8,8 @@ policies were actually trained against, unlike the plain-XML-actuator
 fallback sim_node.py uses (kept for machines where a working `bam` install
 isn't available to whichever Python has rclpy).
 
-Run with the venv interpreter, from the repo root, e.g.:
-    .venv/bin/python3 ros2_microduck/src/rayuela/rayuela/sim_worker.py --use-viewer
+Run with the venv interpreter, e.g.:
+    <repo>/.venv/bin/python3 sim_worker.py --use-viewer
 """
 
 import argparse
@@ -27,7 +27,7 @@ import numpy as np
 
 _PKG_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))  # .../src/rayuela
 sys.path.insert(0, _PKG_DIR)
-from rayuela import board_geometry, kick_command, rayuela_ipc as ipc, paths  # noqa: E402
+from rayuela import board_geometry, kick_command, paths, rayuela_ipc as ipc  # noqa: E402
 
 sys.path.append(str(paths.SCRIPTS_DIR))
 from infer_policy import (  # noqa: E402

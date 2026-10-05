@@ -42,3 +42,7 @@ Rayuela:
 
 cd ros2_microduck && colcon build --symlink-install && source install/setup.bash
 ros2 launch rayuela rayuela.launch.py use_bam_bridge:=true use_viewer:=true
+
+uv run play Mjlab-BallKickSpeed-Right-Flat-MicroDuck \
+    --checkpoint-file logs/rsl_rl/ball_kick_speed_right/2026-09-24_12-28-49_resume/model_2500.pt \
+    --num-envs 5

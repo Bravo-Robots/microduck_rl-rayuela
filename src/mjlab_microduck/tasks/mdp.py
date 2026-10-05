@@ -5902,7 +5902,7 @@ def ball_speed_gaussian_to_command(
     command_name: str = "twist",
     asset_name: str = "ball",
     std: float = 0.25,
-) -> torch.Tensor:
+) -> torch.Tensor: 
     """exp(-0.5 * ((fwd - tgt) / (std * tgt))^2) in [0, 1]: peaks ONLY at the
     commanded speed, with a std that is a FRACTION of the command.
 
