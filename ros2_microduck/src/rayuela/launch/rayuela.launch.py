@@ -4,8 +4,10 @@ from launch.conditions import IfCondition, UnlessCondition
 from launch.substitutions import LaunchConfiguration, PythonExpression
 from launch_ros.actions import Node
 
-VENV_PYTHON = "/home/robot/microduck_rl/.venv/bin/python3"
-SIM_WORKER_SCRIPT = "/home/robot/microduck_rl/ros2_microduck/src/rayuela/rayuela/sim_worker.py"
+from rayuela import paths
+
+VENV_PYTHON = str(paths.VENV_PYTHON)
+SIM_WORKER_SCRIPT = str(paths.SIM_WORKER_SCRIPT)
 
 
 def generate_launch_description():

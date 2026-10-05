@@ -139,7 +139,7 @@ class RayuelaVisionNode(Node):
         self.topdown_pub = self.create_publisher(Image, "/rayuela/topdown_camera/image_raw", 10)
         self.create_subscription(String, "/rayuela/behavior_cmd", self._on_behavior_cmd, 10)
 
-        self.vis_rectify_img = True   # debug window with the rectified canvas
+        self.vis_rectify_img = False   # debug window with the rectified canvas
         self.vis_raw_img = False      # debug window with the raw angled feed
         
         self._vertical_view = TOPDOWN_ORIENTATION == "vertical"
