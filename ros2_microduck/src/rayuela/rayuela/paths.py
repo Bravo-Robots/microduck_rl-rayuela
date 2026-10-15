@@ -3,8 +3,8 @@
 Order: the MICRODUCK_RL_ROOT environment variable if set, else walk up from
 this file (symlinks resolved, so `colcon build --symlink-install` points back
 into the source tree) until a directory holding both pyproject.toml and
-src/mjlab_microduck/ is found. (Not policies-v1/: it is git-ignored, so a
-fresh clone does not have it until the ONNX files are copied in.)
+src/mjlab_microduck/ is found. (Not policies-v1/: the root must resolve even
+if the ONNX files have been moved or deleted.)
 
 Stdlib only: imported both by the ROS 2 nodes (system Python 3.10) and by
 sim_worker.py (the project venv, Python 3.12). The constants are Path objects;

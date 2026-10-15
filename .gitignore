@@ -22,10 +22,11 @@ cheats
 *.pch
 nohup.out
 *.onnx
+# ...except the policies the rayuela game loads, which ship with the repo.
+!policies-v1/*.onnx
 beyondmimic_motions/
 artifacts/
 *.npz
-.claude/
 
 src/mjlab_microduck/robot/microduck.bak/*
 src/mjlab_microduck/robot/microduck_test/*
@@ -39,5 +40,10 @@ backup_onnx/
 
 logdir/.claude/
 logdir/
+
+# colcon (ros2_microduck/)
+ros2_microduck/build/
+ros2_microduck/install/
+ros2_microduck/log/
 logdir/.claude/worktrees/
 

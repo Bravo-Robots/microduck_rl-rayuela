@@ -1,4 +1,4 @@
-"""Kick commands on /rayuela/behavior_cmd, shared by sim_worker, sim_node and
+"""Kick commands on /rayuela/behavior_cmd, shared by sim_setup (sim_worker) and
 vision_node (stdlib only — imported from both the venv and ROS's Python).
 
 Grammar:
@@ -8,29 +8,9 @@ Grammar:
                                 (board_geometry.kick_for_casilla)
 """
 
-import os
-
 from rayuela import board_geometry
 
 KICK_FEET = ("kick_left", "kick_right")
-
-
-def select_kick_policies(policies_dir: str) -> tuple[str, str, bool]:
-    """(left onnx, right onnx, speed_commanded).
-
-    Uses the BallKickSpeed policies only when BOTH feet are present:
-    PolicyInference has one kick_speed_commanded switch for every kick, so a
-    speed policy on one foot and a fixed-speed one on the other would feed
-    the fixed one a command it was never trained on.
-    """
-    speed = [os.path.join(policies_dir, f"ball_kick_speed_{f}.onnx") for f in ("left", "right")]
-    if all(os.path.exists(p) for p in speed):
-        return speed[0], speed[1], True
-    return (
-        os.path.join(policies_dir, "ball_kick_left.onnx"),
-        os.path.join(policies_dir, "ball_kick_right.onnx"),
-        False,
-    )
 
 
 def is_kick_command(cmd: str) -> bool:

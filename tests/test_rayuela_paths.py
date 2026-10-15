@@ -37,8 +37,8 @@ def test_resolves_the_checkout_from_the_source_tree():
     assert p.VENV_PYTHON == REPO / ".venv" / "bin" / "python3"
 
 
-def test_does_not_need_the_git_ignored_policies_dir(tmp_path):
-    # A fresh clone has no policies-v1/ until the ONNX files are copied in.
+def test_does_not_need_the_policies_dir(tmp_path):
+    # The root must resolve even without policies-v1/ (ONNX files moved or deleted).
     fake_repo = tmp_path / "microduck_rl"
     (fake_repo / "src" / "mjlab_microduck").mkdir(parents=True)
     (fake_repo / "pyproject.toml").write_text("")

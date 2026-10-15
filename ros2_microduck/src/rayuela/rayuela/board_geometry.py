@@ -170,8 +170,7 @@ KICK_COMMAND_TO_TRAVEL_RIGHT: tuple[tuple[float, float, float], ...] = (
     (1.00, 1.697,   0.0), (1.20, 2.166, -1.7), (1.45, 2.682, -5.3),
     (1.70, 3.575,  -0.2),
 )
-# The LEFT foot is the RIGHT foot's policy MIRRORED (scripts/mirror_policy.py,
-# policies-v1/ball_kick_speed_left_mirrored.onnx). The separately trained left
+# The LEFT foot is the RIGHT foot's policy MIRRORED (scripts/mirror_policy.py). The separately trained left
 # policy drifted +15 to +20 deg mid-range, putting casillas 5 and 8 off the
 # board; mirrored it drifts +0.2 to +4.7 deg and the whole board is reachable.
 KICK_COMMAND_TO_TRAVEL_LEFT: tuple[tuple[float, float, float], ...] = (

@@ -1,7 +1,7 @@
 from launch import LaunchDescription
 from launch.actions import DeclareLaunchArgument, ExecuteProcess
-from launch.conditions import IfCondition, UnlessCondition
-from launch.substitutions import LaunchConfiguration, PythonExpression
+from launch.conditions import IfCondition
+from launch.substitutions import LaunchConfiguration
 from launch_ros.actions import Node
 
 from rayuela import paths
@@ -18,27 +18,21 @@ def generate_launch_description():
     vis_raw = LaunchConfiguration("vis_raw")
     vertical_view = LaunchConfiguration("vertical_view")
     enable_control = LaunchConfiguration("enable_control")
-    enable_teleop = LaunchConfiguration("enable_teleop")
-    use_bam_bridge = LaunchConfiguration("use_bam_bridge")
     venv_python = LaunchConfiguration("venv_python")
 
     return LaunchDescription([
-        DeclareLaunchArgument("use_viewer", default_value="false"),
-        DeclareLaunchArgument("enable_vision", default_value="true"),
-        DeclareLaunchArgument("enable_control", default_value="true"),
-        DeclareLaunchArgument("enable_teleop", default_value="false"),
+        DeclareLaunchArgument("use_viewer", default_value="false", description=(
+            "Open the MuJoCo viewer window."
+        )),
+        DeclareLaunchArgument("enable_vision", default_value="true", description=(
+            "Run vision_node (ball detection and casilla reports)."
+        )),
+        DeclareLaunchArgument("enable_control", default_value="true", description=(
+            "Run control_node (walks the duck to the reported casilla)."
+        )),
         DeclareLaunchArgument(
             "venv_python", default_value=str(paths.VENV_PYTHON),
             description="Interpreter of the project venv (uv sync) that runs sim_worker.py.",
-        ),
-        DeclareLaunchArgument(
-            "use_bam_bridge", default_value="false",
-            description=(
-                "true: real BAM actuators via sim_worker.py (project venv, "
-                "Python 3.12) + rayuela_bridge_node over a Unix socket. "
-                "false: single-process sim_node with plain XML position "
-                "actuators (lower fidelity, no venv/bam dependency)."
-            ),
         ),
         DeclareLaunchArgument("vis_rect", default_value="false", description=(
             "Visualize the rectified camera image."
@@ -50,38 +44,20 @@ def generate_launch_description():
             "Display the rectified image in vertical orientation."
         )),
 
-        # use_bam_bridge=false path: everything in one rclpy process.
-        Node(
-            package="rayuela",
-            executable="sim_node",
-            name="rayuela_sim_node",
-            output="screen",
-            parameters=[{"use_viewer": use_viewer}],
-            condition=UnlessCondition(use_bam_bridge),
-        ),
-
-        # use_bam_bridge=true path: rclpy-side bridge + the venv-side MuJoCo
-        # worker as a plain subprocess (not a ROS node — it has no rclpy).
+        # The simulation: sim_worker.py runs MuJoCo + the policies with the BAM
+        # actuators they were trained on, under the project venv (Python 3.12).
+        # rclpy only exists for ROS's Python 3.10, so the worker is a plain
+        # subprocess, not a ROS node; bridge_node carries its traffic to and
+        # from ROS topics over a Unix socket (rayuela_ipc.py).
         Node(
             package="rayuela",
             executable="bridge_node",
             name="rayuela_bridge_node",
             output="screen",
-            condition=IfCondition(use_bam_bridge),
         ),
         ExecuteProcess(
-            cmd=[venv_python, SIM_WORKER_SCRIPT, "--use-viewer"],
+            cmd=[venv_python, SIM_WORKER_SCRIPT, "--use-viewer", use_viewer],
             output="screen",
-            condition=IfCondition(PythonExpression(
-                ["'", use_bam_bridge, "' == 'true' and '", use_viewer, "' == 'true'"]
-            )),
-        ),
-        ExecuteProcess(
-            cmd=[venv_python, SIM_WORKER_SCRIPT],
-            output="screen",
-            condition=IfCondition(PythonExpression(
-                ["'", use_bam_bridge, "' == 'true' and '", use_viewer, "' == 'false'"]
-            )),
         ),
 
         Node(
@@ -98,13 +74,5 @@ def generate_launch_description():
             name="rayuela_control_node",
             output="screen",
             condition=IfCondition(enable_control),
-        ),
-        Node(
-            package="rayuela",
-            executable="teleop_keyboard",
-            name="rayuela_teleop_keyboard",
-            output="screen",
-            condition=IfCondition(enable_teleop),
-            emulate_tty=True,
         ),
     ])

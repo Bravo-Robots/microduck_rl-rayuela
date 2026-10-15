@@ -4,17 +4,17 @@ rayuela_bridge_node over a Unix socket (see rayuela_ipc.py) instead of
 rclpy: sends duck pose + camera frames, receives cmd_vel + behavior_cmd.
 
 Uses real BAM actuators (bam.mujoco.MujocoController) — the model the
-policies were actually trained against, unlike the plain-XML-actuator
-fallback sim_node.py uses (kept for machines where a working `bam` install
-isn't available to whichever Python has rclpy).
+policies were actually trained against. How the duck behaves (policies,
+thresholds, command handling, cameras) is in sim_setup.py; this file is the
+process itself: the control loop, the socket and the status line.
 
-Run with the venv interpreter, e.g.:
+Started by rayuela.launch.py; to run it by hand, with the venv interpreter:
     <repo>/.venv/bin/python3 sim_worker.py --use-viewer
 """
 
 import argparse
-import math
 import os
+import signal
 import socket
 import sys
 import threading
@@ -27,42 +27,22 @@ import numpy as np
 
 _PKG_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))  # .../src/rayuela
 sys.path.insert(0, _PKG_DIR)
-from rayuela import board_geometry, kick_command, paths, rayuela_ipc as ipc  # noqa: E402
-
-sys.path.append(str(paths.SCRIPTS_DIR))
-from infer_policy import (  # noqa: E402
-    BAM_KP_FW, BAM_VIN_MIN, PolicyInference, load_bam_model, load_mujoco_with_bam,
+from rayuela import paths, rayuela_ipc as ipc  # noqa: E402
+from rayuela import sim_setup  # noqa: E402  (also puts scripts/ on sys.path)
+from rayuela.sim_setup import (  # noqa: E402
+    CONTROL_DECIMATION, CONTROL_TIMESTEP, IMAGE_PUBLISH_EVERY_N_CONTROL_STEPS,
+    PUBLISH_TOPDOWN_GROUNDTRUTH,
 )
+from infer_policy import BAM_KP_FW, BAM_VIN_MIN, load_bam_model, load_mujoco_with_bam  # noqa: E402
 
 XML_PATH = str(paths.SCENE_XML)
 POLICIES_DIR = str(paths.POLICIES_DIR)
-
-CONTROL_DECIMATION = 4
-CONTROL_TIMESTEP = 0.005  # policies trained at 50Hz = decimation(4) * 0.005s
-IMAGE_PUBLISH_EVERY_N_CONTROL_STEPS = 3  # ~50Hz / 3 ≈ 16Hz
-# The ground-truth top-down feed is redundant now that vision_node rectifies
-# its own top-down canvas from the fiducials, and it doubles the per-publish
-# cost (a second 1280x720 render + a second 2.76MB socket send + a second
-# ROS Image on the bridge). Off by default; flip to True to get the debug
-# feed on /rayuela/topdown_camera_groundtruth/image_raw again.
-PUBLISH_TOPDOWN_GROUNDTRUTH = False
 
 # BAM M6/XL330 defaults, matching infer_policy.py's CLI defaults (--kp-fw,
 # --vin, --vin-drop-gain, --current-limit).
 BAM_VIN = 7.4
 BAM_VIN_DROP_GAIN = 0.1
 BAM_CURRENT_LIMIT = 0.0  # <=0 -> None (no firmware current limit)
-
-# Hysteresis on the walking<->standing switch. PolicyInference compares the
-# command magnitude against a SINGLE switch_threshold, so a command sitting
-# near it flaps the policy every tick ("Switched to standing (0.147)" /
-# "Switched to walking (0.159)" / ...). Since _update_policy_session re-reads
-# self.switch_threshold on every call, raising the bar to ENTER while standing
-# and lowering it to EXIT while walking turns that one threshold into a proper
-# Schmitt trigger: it takes a deliberate command to start moving, and a
-# deliberate stop to settle, with no chatter in between.
-SWITCH_ENTER = 0.1   # command magnitude needed to START walking
-SWITCH_EXIT = 0.05    # must drop below this to fall back to standing
 
 
 class SimWorker:
@@ -71,65 +51,11 @@ class SimWorker:
         self.model, self.data, self.bam_ctrl, _names = load_mujoco_with_bam(
             xml_path, bam_model, CONTROL_TIMESTEP, BAM_VIN_DROP_GAIN, BAM_VIN_MIN
         )
-        kick_left, kick_right, kick_speed_commanded = kick_command.select_kick_policies(policies_dir)
-        print(f"Kick policies: {'SPEED-COMMANDED' if kick_speed_commanded else 'fixed-speed'} "
-              f"({os.path.basename(kick_left)}, {os.path.basename(kick_right)})")
-
-        self.policy = PolicyInference(
-            self.model, self.data,
-            bam_ctrl=self.bam_ctrl,
-            walking_onnx_path=f'{policies_dir}/alpha_walking.onnx',
-            action_scale=1.0,
-            delay_min_lag=0,
-            delay_max_lag=0,
-            standing_onnx_path=f'{policies_dir}/alpha_standing.onnx',
-            # 0.5 (the run_env.py/original default) exceeds vel_max_x=0.3 below,
-            # so a pure-forward command's norm never crosses it and the duck
-            # never leaves "standing" no matter what control_node commands —
-            # lowered so any deliberate walk/turn command actually engages
-            # the walking gait, while exact-zero idle still reads as standing.
-            switch_threshold=SWITCH_ENTER,
-            # See sim_node.py: TRUE matches infer_policy.py's CLI default.
-            # False fed the raw IMU accelerometer, whose apparent-gravity
-            # direction tilts with body acceleration — the policy then leans
-            # forward to correct a tilt that isn't there.
-            use_projected_gravity=True,
-            ground_pick_onnx_path=f'{policies_dir}/alpha_ground_pick.onnx',
-            ground_pick_period=1.0,
-            sit_onnx_path=None,
-            new_cmd_obs=True,
-            slope_onnx_path=None,
-            sitstand_onnx_path=f'{policies_dir}/alpha_sitstand.onnx',
-            kick_left_onnx_path=kick_left,
-            kick_right_onnx_path=kick_right,
-            roulade_onnx_path=f'{policies_dir}/roulade.onnx',
-            kick_duration=2.0,
-            roulade_duration=2.0,
-            kick_speed_commanded=kick_speed_commanded,
-        )
-        self.policy.set_vel_cmd(0.0, 0.0, 0.0)
-        if self.policy.standing_session is not None:
-            self.policy.current_policy = "standing"
-            self.policy.ort_session = self.policy.standing_session
-            self.policy._update_command()
-        self.policy.vel_max_x = 0.3
-        self.policy.vel_min_x = -0.3
-        self.policy.vel_max_y = 0.2
-        self.policy.vel_min_y = -0.2
-        self.policy.vel_max_ang = 1.5
-
+        self.policy = sim_setup.build_policy(self.model, self.data, policies_dir, self.bam_ctrl)
+        self._qpos_adr = sim_setup.place_duck_at_home(self.model, self.data, self.policy)
         self._freejoint_id = mujoco.mj_name2id(
             self.model, mujoco.mjtObj.mjOBJ_JOINT, "trunk_base_freejoint"
         )
-        self._qpos_adr = self.model.jnt_qposadr[self._freejoint_id]
-        self.data.qpos[self._qpos_adr + 0] = 0.0
-        self.data.qpos[self._qpos_adr + 1] = 0.0
-        self.data.qpos[self._qpos_adr + 2] = 0.125
-        self.data.qpos[self._qpos_adr + 3:self._qpos_adr + 7] = [1, 0, 0, 0]
-        for i, qpos_idx in enumerate(self.policy.joint_qpos_indices):
-            self.data.qpos[qpos_idx] = self.policy.default_pose[i]
-        self.policy.set_position_targets(self.policy.default_pose)
-        mujoco.mj_forward(self.model, self.data)
         self.bam_ctrl.reset(self.data.qpos)
 
         self.viewer = None
@@ -138,19 +64,7 @@ class SimWorker:
                 self.model, self.data, show_left_ui=False, show_right_ui=False
             )
 
-        self._cam_id = mujoco.mj_name2id(
-            self.model, mujoco.mjtObj.mjOBJ_CAMERA, board_geometry.CAMERA_NAME
-        )
-        self._renderer = mujoco.Renderer(
-            self.model, height=board_geometry.CAMERA_HEIGHT, width=board_geometry.CAMERA_WIDTH
-        )
-        self._topdown_cam = mujoco.MjvCamera()
-        self._topdown_cam.type = mujoco.mjtCamera.mjCAMERA_FREE
-        self._topdown_cam.orthographic = 1
-        self._topdown_cam.lookat = list(board_geometry.TOPDOWN_DEBUG_CAM_LOOKAT)
-        self._topdown_cam.distance = board_geometry.TOPDOWN_DEBUG_CAM_DISTANCE
-        self._topdown_cam.azimuth = board_geometry.TOPDOWN_DEBUG_CAM_AZIMUTH
-        self._topdown_cam.elevation = board_geometry.TOPDOWN_DEBUG_CAM_ELEVATION
+        self._cameras = sim_setup.SimCameras(self.model)
 
         self.control_dt = CONTROL_DECIMATION * self.model.opt.timestep
         self._control_step_count = 0
@@ -166,7 +80,7 @@ class SimWorker:
 
         self.sock: socket.socket | None = None
         self._sock_lock = threading.Lock()
-        self._last_cmd_key = None  # dedup identical cmd_vel re-applies
+        self._vel_gate = sim_setup.VelCommandGate(self.policy)
 
     def connect(self) -> None:
         while True:
@@ -189,53 +103,12 @@ class SimWorker:
                 return
             msg_type, body = frame
             if msg_type == ipc.MSG_CMD_VEL:
-                vx, vy, wz = ipc.unpack_cmd_vel(body)
-                # control_node republishes at 20Hz whether or not the command
-                # changed, and PolicyInference.set_vel_cmd prints on every
-                # call — that is the wall of identical "Vel cmd: ..." lines.
-                # Skip identical re-applies (they are idempotent anyway).
-                # current_policy is part of the key on purpose: _end_behavior
-                # zeroes vel_cmd when a kick/roulade finishes, so without it a
-                # still-unchanged walk command would never be re-applied and
-                # the duck would just stand there after a trick.
-                key = (vx, vy, wz, self.policy.current_policy)
-                if key != self._last_cmd_key:
-                    self._last_cmd_key = key
-                    # Schmitt trigger (see SWITCH_ENTER/SWITCH_EXIT): the bar to
-                    # start walking is higher than the bar to keep walking.
-                    self.policy.switch_threshold = (
-                        SWITCH_EXIT if self.policy.current_policy == "walking"
-                        else SWITCH_ENTER
-                    )
-                    self.policy.set_vel_cmd(vx, vy, wz)
+                self._vel_gate.apply(*ipc.unpack_cmd_vel(body))
             elif msg_type == ipc.MSG_BEHAVIOR:
                 self._on_behavior(ipc.unpack_behavior(body))
 
     def _on_behavior(self, name: str) -> None:
-        if name == "ground_pick":
-            self.policy.trigger_ground_pick()
-        elif name == "toggle_sit":
-            self.policy.toggle_sit()
-        elif kick_command.is_kick_command(name):
-            try:
-                kick, speed = kick_command.parse_kick_command(
-                    name, duck_x=float(self.data.qpos[self._qpos_adr])
-                )
-            except ValueError as e:
-                print(f"Bad kick command '{name}': {e}")
-                return
-            if speed is not None and not self.policy.kick_speed_commanded:
-                print(f"'{name}': fixed-speed kick policies loaded, target speed ignored")
-            print(f"{kick}" + (f" at {speed:.2f} m/s" if speed is not None else ""))
-            self.policy.trigger_behavior(kick, kick_speed=speed)
-        elif name == "stop":
-            # Not a behavior session: stop_all ends whatever is running (kick,
-            # roulade, sit, pick) and drops into the standing policy.
-            self.policy.stop_all()
-        elif name in self.policy.behavior_sessions:
-            self.policy.trigger_behavior(name)
-        else:
-            print(f"Unknown behavior_cmd '{name}'")
+        sim_setup.handle_behavior_cmd(self.policy, name, duck_x=float(self.data.qpos[self._qpos_adr]))
 
     def _send(self, msg_type: int, body: bytes) -> None:
         with self._sock_lock:
@@ -246,28 +119,11 @@ class SimWorker:
 
     def run(self) -> None:
         print("sim_worker running — Ctrl+C to stop")
-        prev_time = time.time()
         try:
             while True:
                 step_start = time.time()
-                prev_time = step_start
 
-                # SIM time, not wall time. mj_step below advances the world by
-                # exactly control_dt, so the behavior timers have to drain on
-                # the same clock. Feeding them wall-clock dt (what run_env.py /
-                # infer_policy.py do, where it's harmless because their loop is
-                # just a viewer sync) made trick duration depend on render and
-                # socket load: this loop ships two 2.7MB frames every 3rd step,
-                # so it routinely overruns its 20ms budget and the roulade was
-                # being cut off after ~0.6s of roll instead of running to
-                # completion — it only travelled 0.14m instead of 0.57m.
-                self.policy.update_ground_pick_phase(self.control_dt)
-                self.policy.update_behavior(self.control_dt)
-                # Sim time, like update_behavior: a fall while sitting has to
-                # hand control back to the standing policy, or the duck lies
-                # there under a policy that cannot get up (see
-                # infer_policy.SIT_FALL_TILT_RAD).
-                self.policy.update_sit_fall_watchdog(self.control_dt)
+                sim_setup.step_behavior_timers(self.policy, self.control_dt)
 
                 action = self.policy.infer()
                 self.policy.apply_action(action)
@@ -295,9 +151,11 @@ class SimWorker:
         except KeyboardInterrupt:
             pass
         finally:
+            # A second Ctrl+C must not abort the cleanup (see ros_utils.spin_node).
+            signal.signal(signal.SIGINT, signal.SIG_IGN)
             if self.viewer is not None:
                 self.viewer.close()
-            self._renderer.close()
+            self._cameras.close()
 
     def _update_status(self) -> None:
         """One status line per second: 1s-averaged achieved velocity (body
@@ -339,32 +197,30 @@ class SimWorker:
         self._send(ipc.MSG_POSE, body)
 
     def _send_images(self, stamp: float) -> None:
-        self._renderer.update_scene(self.data, camera=self._cam_id)
-        frame = self._renderer.render()
-        h, w, _ = frame.shape
-        self._send(ipc.MSG_IMAGE, ipc.pack_image(
-            ipc.CAM_ANGLED, stamp, w, h, np.ascontiguousarray(frame).tobytes()
-        ))
+        self._send_frame(ipc.CAM_ANGLED, stamp, self._cameras.render_angled(self.data))
+        if PUBLISH_TOPDOWN_GROUNDTRUTH:
+            self._send_frame(ipc.CAM_TOPDOWN_DEBUG, stamp, self._cameras.render_topdown_debug(self.data))
 
-        if not PUBLISH_TOPDOWN_GROUNDTRUTH:
-            return
-        self._renderer.update_scene(self.data, camera=self._topdown_cam)
-        topdown = self._renderer.render()
-        h, w, _ = topdown.shape
-        self._send(ipc.MSG_IMAGE, ipc.pack_image(
-            ipc.CAM_TOPDOWN_DEBUG, stamp, w, h, np.ascontiguousarray(topdown).tobytes()
-        ))
+    def _send_frame(self, cam_id: int, stamp: float, frame) -> None:
+        h, w, _ = frame.shape
+        self._send(ipc.MSG_IMAGE, ipc.pack_image(cam_id, stamp, w, h, frame.tobytes()))
 
 
 def main():
     parser = argparse.ArgumentParser(description="rayuela sim_worker (BAM actuators, talks to rayuela_bridge_node)")
-    parser.add_argument("--use-viewer", action="store_true")
+    # "--use-viewer" alone or "--use-viewer true|false" (how the launch file
+    # passes its use_viewer argument through).
+    parser.add_argument("--use-viewer", nargs="?", const="true", default="false",
+                        choices=["true", "false"])
     parser.add_argument("--xml-path", default=XML_PATH)
     parser.add_argument("--policies-dir", default=POLICIES_DIR)
     args = parser.parse_args()
 
-    worker = SimWorker(args.xml_path, args.policies_dir, args.use_viewer)
-    worker.connect()
+    worker = SimWorker(args.xml_path, args.policies_dir, args.use_viewer == "true")
+    try:
+        worker.connect()
+    except KeyboardInterrupt:
+        return  # Ctrl+C while still waiting for the bridge
     worker.run()
 
 

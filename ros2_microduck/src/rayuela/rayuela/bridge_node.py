@@ -11,7 +11,6 @@ socket. Everything else in the rayuela stack (vision_node, control_node,
 teleop_keyboard) is unaffected — they only ever see real ROS2 topics.
 """
 
-import array
 import os
 import socket
 import threading
@@ -21,9 +20,9 @@ from geometry_msgs.msg import PoseStamped, Twist
 from rclpy.node import Node
 from rclpy.qos import QoSDurabilityPolicy, QoSProfile
 from sensor_msgs.msg import CameraInfo, Image
-from std_msgs.msg import String
+from std_msgs.msg import Header, String
 
-from rayuela import board_geometry, rayuela_ipc as ipc
+from rayuela import rayuela_ipc as ipc, ros_utils
 
 
 class RayuelaBridgeNode(Node):
@@ -44,7 +43,7 @@ class RayuelaBridgeNode(Node):
         )
         self.pose_pub = self.create_publisher(PoseStamped, "/rayuela/duck_pose", 10)
         self.policy_state_pub = self.create_publisher(String, "/rayuela/current_policy", 10)
-        self.camera_info_pub.publish(self._build_camera_info())
+        self.camera_info_pub.publish(ros_utils.camera_info_msg())
 
         self.create_subscription(Twist, "/rayuela/cmd_vel", self._on_cmd_vel, 10)
         self.create_subscription(String, "/rayuela/behavior_cmd", self._on_behavior_cmd, 10)
@@ -54,19 +53,6 @@ class RayuelaBridgeNode(Node):
         self._accept_thread.start()
 
         self.get_logger().info(f"rayuela_bridge_node listening on {ipc.SOCKET_PATH}")
-
-    def _build_camera_info(self) -> CameraInfo:
-        fx, fy, cx, cy = board_geometry.camera_intrinsics()
-        msg = CameraInfo()
-        msg.header.frame_id = "angled_cam"
-        msg.width = board_geometry.CAMERA_WIDTH
-        msg.height = board_geometry.CAMERA_HEIGHT
-        msg.distortion_model = "plumb_bob"
-        msg.d = [0.0, 0.0, 0.0, 0.0, 0.0]
-        msg.k = [fx, 0.0, cx, 0.0, fy, cy, 0.0, 0.0, 1.0]
-        msg.r = [1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0]
-        msg.p = [fx, 0.0, cx, 0.0, 0.0, fy, cy, 0.0, 0.0, 0.0, 1.0, 0.0]
-        return msg
 
     def _accept_loop(self) -> None:
         try:
@@ -82,7 +68,14 @@ class RayuelaBridgeNode(Node):
             with self._client_lock:
                 self._client_sock = conn
                 self._warned_no_client = False
-            self._read_loop(conn)
+            try:
+                self._read_loop(conn)
+            except Exception:
+                # Shutting down: the socket was closed or the ROS context
+                # went away under the reader. Anything else is a real error.
+                if self._stop.is_set() or not rclpy.ok():
+                    return
+                raise
             with self._client_lock:
                 if self._client_sock is conn:
                     self._client_sock = None
@@ -102,41 +95,20 @@ class RayuelaBridgeNode(Node):
                 self.policy_state_pub.publish(String(data=ipc.unpack_policy_state(body)))
 
     def _publish_pose(self, stamp_sec, x, y, z, qx, qy, qz, qw) -> None:
-        msg = PoseStamped()
-        msg.header.stamp = self.get_clock().now().to_msg()
-        msg.header.frame_id = "world"
-        msg.pose.position.x = x
-        msg.pose.position.y = y
-        msg.pose.position.z = z
-        msg.pose.orientation.x = qx
-        msg.pose.orientation.y = qy
-        msg.pose.orientation.z = qz
-        msg.pose.orientation.w = qw
-        self.pose_pub.publish(msg)
+        stamp = self.get_clock().now().to_msg()
+        self.pose_pub.publish(ros_utils.pose_msg(stamp, x, y, z, qx, qy, qz, qw))
 
     def _publish_image(self, cam_id, stamp_sec, width, height, rgb_bytes) -> None:
-        msg = Image()
-        msg.header.stamp = self.get_clock().now().to_msg()
-        msg.height = height
-        msg.width = width
-        msg.encoding = "rgb8"
-        msg.is_bigendian = 0
-        msg.step = width * 3
-        # array.array('B', ...), NOT bytes. rosidl's generated setter for a
-        # uint8[] field fast-paths an array.array with typecode 'B' straight
-        # into the message; anything else falls into a __debug__ branch that
-        # validates EVERY element in Python. For a 2.76MB frame that is
-        # 163ms per image vs 0.06ms — measured. At two images per publish it
-        # made the bridge the bottleneck for the whole pipeline: it blocked
-        # its own socket reader, the Unix socket backed up, and sim_worker
-        # stalled in sendall.
-        msg.data = array.array('B', rgb_bytes)
+        stamp = self.get_clock().now().to_msg()
         if cam_id == ipc.CAM_ANGLED:
-            msg.header.frame_id = "angled_cam"
-            self.image_pub.publish(msg)
+            pub, frame_id = self.image_pub, "angled_cam"
         elif cam_id == ipc.CAM_TOPDOWN_DEBUG:
-            msg.header.frame_id = "topdown_debug"
-            self.topdown_debug_pub.publish(msg)
+            pub, frame_id = self.topdown_debug_pub, "topdown_debug"
+        else:
+            return
+        pub.publish(ros_utils.rgb8_image_msg(
+            rgb_bytes, width, height, Header(stamp=stamp, frame_id=frame_id)
+        ))
 
     def _on_cmd_vel(self, msg: Twist) -> None:
         self._send(ipc.MSG_CMD_VEL, ipc.pack_cmd_vel(msg.linear.x, msg.linear.y, msg.angular.z))
@@ -166,15 +138,7 @@ class RayuelaBridgeNode(Node):
 
 
 def main(args=None):
-    rclpy.init(args=args)
-    node = RayuelaBridgeNode()
-    try:
-        rclpy.spin(node)
-    except KeyboardInterrupt:
-        pass
-    finally:
-        node.destroy_node()
-        rclpy.shutdown()
+    ros_utils.spin_node(RayuelaBridgeNode, args)
 
 
 if __name__ == "__main__":

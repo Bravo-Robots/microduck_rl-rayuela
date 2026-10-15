@@ -3,7 +3,7 @@
 <package format="3">
   <name>rayuela</name>
   <version>0.0.0</version>
-  <description>TODO: Package description</description>
+  <description>Microduck rayuela (hopscotch) game: MuJoCo sim + ONNX policies, ball vision and go-to-casilla control</description>
   <maintainer email="robot@todo.todo">robot</maintainer>
   <license>Apache-2.0</license>
 
@@ -14,7 +14,9 @@
   <depend>rayuela_msgs</depend>
   <depend>launch</depend>
   <depend>launch_ros</depend>
-  <depend>tf2_ros</depend>
+
+  <exec_depend>python3-numpy</exec_depend>
+  <exec_depend>python3-opencv</exec_depend>
 
   <test_depend>ament_copyright</test_depend>
   <test_depend>ament_flake8</test_depend>

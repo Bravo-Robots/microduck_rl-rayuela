@@ -1,8 +1,8 @@
 """Keyboard teleop over ROS2: publishes /rayuela/cmd_vel and
 /rayuela/behavior_cmd instead of driving PolicyInference directly, so a
 human can steer the duck (and manually trigger kicks) through the same
-topics rayuela_control_node uses. Terminal reader lifted from run_env.py's
-TerminalInput.
+topics rayuela_control_node uses. Terminal reader lifted from
+scripts/infer_policy.py's TerminalInput.
 """
 
 import os
@@ -114,11 +114,11 @@ class RayuelaTeleopKeyboard(Node):
         self.go_home_pub = self.create_publisher(Bool, "/rayuela/go_home", 10)
         self.vel_cmd = [0.0, 0.0, 0.0]
         print(
-            "\nrayuela teleop — arrows: walk, space: stop, "
+            "\nrayuela teleop — arrows: walk/turn, space: zero velocity, "
             "k/l: kick left/right, r: roulade, g: ground_pick, y: toggle_sit, "
-            "h: home, x: stop, 1-9/0: kick to casilla 1-9/10, q: quit\n"
+            "h: home, x: stop everything, 1-9/0: kick to casilla 1-9/10, q: quit\n"
         )
-    
+
     def handle_key(self, key: str) -> bool:
         """Returns False on quit request."""
         if key == "up":

@@ -11,19 +11,17 @@ when the ball actually STOPS (centroid inside SETTLE_PIXEL_TOL for
 SETTLE_WINDOW_S), so a hard kick and a soft one each report on arrival.
 """
 
-import array
 import math
 from collections import deque
 
 import cv2
 import numpy as np
-import rclpy
 from geometry_msgs.msg import Point, PointStamped
 from rclpy.node import Node
 from sensor_msgs.msg import Image
-from std_msgs.msg import String
+from std_msgs.msg import Header, String
 
-from rayuela import board_geometry, kick_command
+from rayuela import board_geometry, kick_command, ros_utils
 from rayuela_msgs.msg import TargetCasilla
 
 # Ball rgba = (1, 0.55, 0, 1) -> orange. HSV bounds with generous margin for
@@ -33,18 +31,7 @@ BALL_HSV_HIGH = np.array([25, 255, 255])
 
 # The duck is orange too and its geoms land INSIDE this window (measured hues
 # 9.6 and 20.1 against the ball's 16.5), so "the biggest orange blob" is not
-# the ball. Shape separates them; measured on the canvas, ball on casilla 1 —
-# the only square the duck's body can reach:
-#                          area    circ   SOLIDITY
-#     ball, near to far    1.19x   0.88     0.98
-#                          1.85x   0.68     0.96   (stretched by the homography)
-#     duck, best blob      0.44x   0.43     0.75
-#     duck FUSED with ball 2.01x   0.27     0.69
-# Solidity (area / convex-hull area) is the test: the far-end ball is a ~2:1
-# ellipse, which ruins circularity (0.68, one hundredth above a 0.65 gate —
-# that silently lost a ball on the cielo) but not convexity. The area window
-# has to be wide enough for that stretch, which lets the fused blob through on
-# size; solidity is what rejects it.
+# the ball. Shape separates them.
 BALL_EXPECTED_AREA_PX = math.pi * (
     board_geometry.BALL_RADIUS_M * board_geometry.TOPDOWN_PIXELS_PER_METER
 ) ** 2
@@ -123,6 +110,7 @@ BALL_WARN_GRACE_S = 2.0
 # default; the `vertical_view` parameter (launch arg) overrides it.
 TOPDOWN_ORIENTATION = "horizontal"
 
+
 class RayuelaVisionNode(Node):
     def __init__(self):
         super().__init__("rayuela_vision_node")
@@ -143,7 +131,7 @@ class RayuelaVisionNode(Node):
         self.ball_pub = self.create_publisher(PointStamped, "/rayuela/ball/position", 10)
         self.target_pub = self.create_publisher(TargetCasilla, "/rayuela/target_casilla", 10)
         self.topdown_pub = self.create_publisher(Image, "/rayuela/topdown_camera/image_raw", 10)
-        
+
         self.create_subscription(String, "/rayuela/behavior_cmd", self._on_behavior_cmd, 10)
         self.create_subscription(Image, "/rayuela/angled_camera/image_raw", self._on_image, 10)
 
@@ -187,7 +175,7 @@ class RayuelaVisionNode(Node):
             if dist < best_dist:
                 best_name, best_dist = name, dist
         return best_name, best_dist
-        
+
     def _calibrate_homography(self, frame_bgr: np.ndarray) -> bool:
         fiducials_px = self._find_fiducials(frame_bgr)
         names = list(board_geometry.FIDUCIALS.keys())
@@ -260,7 +248,7 @@ class RayuelaVisionNode(Node):
         """Seconds since the kick that armed landing detection (inf if none)."""
         if self._kick_stamp is None:
             return float("inf")
-        return (self.get_clock().now() - self._kick_stamp).nanoseconds * 1e-9
+        return ros_utils.seconds(self.get_clock().now() - self._kick_stamp)
 
     def _find_ball_hough(self, mask: np.ndarray) -> tuple[float, float] | None:
         """Last resort when the ball's blob is fused with the duck's.
@@ -314,7 +302,7 @@ class RayuelaVisionNode(Node):
         # vertical view, and the marker is placed through the same transform.
         vis = self._oriented(canvas_bgr)  # copies when rotating
         if vis is canvas_bgr:
-            vis = canvas_bgr.copy()       # no tocar el canvas original
+            vis = canvas_bgr.copy()       # never draw on the canvas being published
         if ball_px is not None:
             ox, oy = self._oriented_point(*ball_px, canvas_bgr.shape[1])
             cx, cy = int(round(ox)), int(round(oy))
@@ -332,7 +320,7 @@ class RayuelaVisionNode(Node):
                 lines = [f"px ({cx}, {cy})", f"world ({wx:.2f}, {wy:.2f})"]
             for i, line in enumerate(lines):
                 cv2.putText(vis, line, (8, 20 + 30 * i), cv2.FONT_HERSHEY_SIMPLEX,
-                            1.0, (127,7,111), 1, cv2.LINE_AA)
+                            1.0, (127, 7, 111), 1, cv2.LINE_AA)
         else:
             cv2.putText(vis, "ball: not detected", (8, 20),
                         cv2.FONT_HERSHEY_SIMPLEX, 1.0, (0, 0, 255), 1, cv2.LINE_AA)
@@ -355,7 +343,6 @@ class RayuelaVisionNode(Node):
                 cv2.waitKey(1)
             except cv2.error:
                 pass  # headless mode, no GUI available
-
 
         if self._homography is None:
             if not self._calibrate_homography(frame_bgr):
@@ -416,7 +403,7 @@ class RayuelaVisionNode(Node):
         """Disarm if the ball never settled. Returns True if it gave up."""
         if not self._awaiting_landing:
             return False
-        if (self.get_clock().now() - self._kick_stamp).nanoseconds * 1e-9 <= LANDING_TIMEOUT_S:
+        if self._since_kick() <= LANDING_TIMEOUT_S:
             return False
         self._awaiting_landing = False
         self.get_logger().warn(
@@ -432,17 +419,17 @@ class RayuelaVisionNode(Node):
         if self._check_landing_timeout():
             return
         now = self.get_clock().now()
-        elapsed = (now - self._kick_stamp).nanoseconds * 1e-9
+        elapsed = ros_utils.seconds(now - self._kick_stamp)
 
         self._ball_track.append((now, px, py))
-        while self._ball_track and (now - self._ball_track[0][0]).nanoseconds * 1e-9 > SETTLE_WINDOW_S:
+        while self._ball_track and ros_utils.seconds(now - self._ball_track[0][0]) > SETTLE_WINDOW_S:
             self._ball_track.popleft()
 
         # Need a full window of samples before the spread means anything —
         # otherwise the first frame or two always look "stopped".
         if len(self._ball_track) < SETTLE_MIN_SAMPLES:
             return
-        span = (self._ball_track[-1][0] - self._ball_track[0][0]).nanoseconds * 1e-9
+        span = ros_utils.seconds(self._ball_track[-1][0] - self._ball_track[0][0])
         if span < SETTLE_WINDOW_S * 0.9:
             return
 
@@ -476,31 +463,14 @@ class RayuelaVisionNode(Node):
         )
 
     def _publish_topdown(self, canvas_bgr: np.ndarray, header) -> None:
-        canvas_rgb = cv2.cvtColor(self._oriented(canvas_bgr), cv2.COLOR_BGR2RGB)
+        canvas_rgb = np.ascontiguousarray(cv2.cvtColor(self._oriented(canvas_bgr), cv2.COLOR_BGR2RGB))
         height, width, _ = canvas_rgb.shape
-        img_msg = Image()
-        img_msg.header = header
-        img_msg.header.frame_id = "topdown_canvas"
-        img_msg.height = height
-        img_msg.width = width
-        img_msg.encoding = "rgb8"
-        img_msg.is_bigendian = 0
-        img_msg.step = width * 3
-        # array.array('B'), not bytes — see bridge_node._publish_image.
-        img_msg.data = array.array('B', np.ascontiguousarray(canvas_rgb).tobytes())
-        self.topdown_pub.publish(img_msg)
+        header = Header(stamp=header.stamp, frame_id="topdown_canvas")
+        self.topdown_pub.publish(ros_utils.rgb8_image_msg(canvas_rgb.tobytes(), width, height, header))
 
 
 def main(args=None):
-    rclpy.init(args=args)
-    node = RayuelaVisionNode()
-    try:
-        rclpy.spin(node)
-    except KeyboardInterrupt:
-        pass
-    finally:
-        node.destroy_node()
-        rclpy.shutdown()
+    ros_utils.spin_node(RayuelaVisionNode, args)
 
 
 if __name__ == "__main__":

@@ -1,6 +1,6 @@
 """Walks the duck to the centre of whatever casilla vision_node reports.
 
-Go-to-point controller on ground-truth duck pose from sim_node (a real robot
+Go-to-point controller on ground-truth duck pose from the sim (a real robot
 would swap that input for its own odometry). ``/rayuela/go_home`` (Bool true)
 overrides the active target and sends the duck back to HOME.
 
@@ -19,13 +19,12 @@ Three rules shape everything below, each measured:
 
 import math
 
-import rclpy
 from geometry_msgs.msg import PoseStamped, Twist
 from rclpy.duration import Duration
 from rclpy.node import Node
 from std_msgs.msg import Bool, String
 
-from rayuela import board_geometry
+from rayuela import board_geometry, ros_utils
 from rayuela_msgs.msg import TargetCasilla
 
 CONTROL_DT_S = 0.05
@@ -37,8 +36,9 @@ MIN_ANG_VEL = 0.4
 # ── Measured gait limits ────────────────────────────────────────────────────
 # Forward, holding a constant vx for 8 s (escena_rayuela.xml):
 #     cmd 0.08-0.20 -> 0.000 m/s | 0.25 -> 0.078 | 0.30 -> 0.107 | 0.50 -> 0.215
-# So WALK_MIN_VEL must clear BOTH the 0.20 dead zone and sim_worker's
-# SWITCH_ENTER (0.15), below which the sim never leaves the standing policy.
+# So WALK_MIN_VEL must clear BOTH the 0.20 dead zone and the sim's
+# walking<->standing switch (sim_setup.SWITCH_ENTER, 0.1), below which the sim
+# never leaves the standing policy.
 WALK_MIN_VEL = 0.30
 # Turning IN PLACE (vx=0): 0.4 -> 0.011 rad/s, 0.8 -> 0.018, 1.5 -> 0.77. An
 # in-place turn is therefore bang-bang at 1.5; a proportional command stalls
@@ -239,12 +239,16 @@ class RayuelaControlNode(Node):
             # would still see the False left by the previous round trip and
             # jump straight to _rotate_home without ever walking back.
             self._home_oriented = True
+            # The realign latch may still be set by an interrupted casilla
+            # approach, whose heading error meant something else.
+            self._aligning = False
+            self._final_turning = False
             self.get_logger().info("Go-home requested — heading to start_spot")
 
     def _on_timer(self) -> None:
         if self._duck_pose is None:
             return
-        
+
         now = self.get_clock().now()
         if self._current_policy in DYNAMIC_BEHAVIOR_STATES:
             # (Re)arm the hold for as long as the trick is actually running,
@@ -260,7 +264,7 @@ class RayuelaControlNode(Node):
         # window cost ~4s of the duck just standing there after every roulade.
         holding_for_trick = (
             self.now_roulade is not None
-            and (now - self.now_roulade).nanoseconds * 1e-9 < ROULADE_HOLD_S
+            and ros_utils.seconds(now - self.now_roulade) < ROULADE_HOLD_S
             and tilt > RECOVERY_SETTLE_RAD
         )
         in_dynamic_behavior = self._current_policy in DYNAMIC_BEHAVIOR_STATES or holding_for_trick
@@ -294,7 +298,7 @@ class RayuelaControlNode(Node):
                 return
             if self._recovery_settle_start is None:
                 self._recovery_settle_start = self.get_clock().now()
-            settled_s = (self.get_clock().now() - self._recovery_settle_start).nanoseconds * 1e-9
+            settled_s = ros_utils.seconds(self.get_clock().now() - self._recovery_settle_start)
             if settled_s < RECOVERY_SETTLE_S:
                 self.pub_vel_cmd(0.0, 0.0)
                 return
@@ -304,7 +308,7 @@ class RayuelaControlNode(Node):
 
         if self._approach_state == "arrived":
             return
-        
+
         if self._go_home and self._home_oriented:
             self._run_go_home(q)
             return
@@ -337,7 +341,7 @@ class RayuelaControlNode(Node):
         published command is additionally rate-limited in pub_vel_cmd.
         """
         now = self.get_clock().now()
-        gap = None if self._pd_last_t is None else (now - self._pd_last_t).nanoseconds * 1e-9
+        gap = None if self._pd_last_t is None else ros_utils.seconds(now - self._pd_last_t)
         if gap is None or gap > 3 * CONTROL_DT_S:
             # First call, or resuming after a fall / trick hold: no usable
             # history, and a stale sample would inject a huge fake rate.
@@ -370,7 +374,7 @@ class RayuelaControlNode(Node):
         if abs(ang_vel) < MIN_ANG_VEL:
             ang_vel = math.copysign(MIN_ANG_VEL, ang_vel)
         return max(-MAX_ANG_VEL, min(MAX_ANG_VEL, ang_vel))
-    
+
     def _should_reverse(self, roll_error: float) -> bool:
         """Whether to back up so a roll can land on the casilla.
 
@@ -410,7 +414,7 @@ class RayuelaControlNode(Node):
             return False
 
         backed_up = roll_error - self._reverse_start_error
-        elapsed = (self.get_clock().now() - self._reverse_start).nanoseconds * 1e-9
+        elapsed = ros_utils.seconds(self.get_clock().now() - self._reverse_start)
         if backed_up > REVERSE_MAX_M or elapsed > REVERSE_TIMEOUT_S:
             self._reversing = False
             self._skip_roulade = True
@@ -501,22 +505,28 @@ class RayuelaControlNode(Node):
             math.sin(target_yaw - yaw), math.cos(target_yaw - yaw)
         )
 
-        if abs(heading_error) > math.radians(30):
-            ang_vel = self._heading_pd(heading_error)
-            self.pub_vel_cmd(0.0, ang_vel)
-            return
-
+        # Arrival first: right on top of HOME the bearing to it is noise, and
+        # turning to face it is wasted — _rotate_home sets the final heading.
         if distance <= (POS_TOLERANCE_M-0.04):
             self.pub_vel_cmd(0.0, 0.0)
             self._home_oriented = False
             self._final_turning = False
+            self._aligning = False
             return
-        elif distance <= FINAL_APPROACH_M:
+
+        # Badly misaligned: turn in place, bang-bang like the casilla approach.
+        # A PD here commanded under ~1.2 rad/s for errors of 30-45 deg — inside
+        # the in-place dead zone (see TURN_IN_PLACE_CMD) — and could stall.
+        if self._needs_realign(heading_error):
+            self.pub_vel_cmd(*self._gated(*self._turn_in_place(heading_error)))
+            return
+
+        if distance <= FINAL_APPROACH_M:
             self.pub_vel_cmd(*self._gated(*self._final_approach(distance, heading_error)))
             return
 
         ang_vel = self._heading_pd(heading_error)
-        
+
         # Full speed or nothing. A proportional taper produced 0.15, 0.14,
         # 0.11... on approach: inside the dead zone AND right on
         # switch_threshold, so the sim flapped walking<->standing every tick.
@@ -593,7 +603,7 @@ class RayuelaControlNode(Node):
                     f"walking the rest (one roll per target)"
                 )
                 self._approach_state = "straight"
-            elif (now - self._roulade_wait_start).nanoseconds * 1e-9 > ROULADE_WAIT_TIMEOUT_S:
+            elif ros_utils.seconds(now - self._roulade_wait_start) > ROULADE_WAIT_TIMEOUT_S:
                 self.get_logger().warn(
                     "Roulade never started (behavior_cmd ignored — something "
                     "else running?) — retrying approach"
@@ -654,7 +664,6 @@ class RayuelaControlNode(Node):
                     seconds=ROULADE_PRE_SETTLE_S
                 )
                 self.pub_vel_cmd(0.0, 0.0)
-                self.pub_vel_cmd(0.0, 0.0)
             else:
                 # Bang-bang like _rotate_home: this is an in-place turn, and a
                 # proportional command stalls below ~1.5 rad/s (see
@@ -689,15 +698,7 @@ class RayuelaControlNode(Node):
 
 
 def main(args=None):
-    rclpy.init(args=args)
-    node = RayuelaControlNode()
-    try:
-        rclpy.spin(node)
-    except KeyboardInterrupt:
-        pass
-    finally:
-        node.destroy_node()
-        rclpy.shutdown()
+    ros_utils.spin_node(RayuelaControlNode, args)
 
 
 if __name__ == "__main__":

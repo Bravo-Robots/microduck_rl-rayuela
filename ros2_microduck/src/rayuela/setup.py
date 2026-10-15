@@ -18,7 +18,7 @@ setup(
     zip_safe=True,
     maintainer='robot',
     maintainer_email='robot@todo.todo',
-    description='TODO: Package description',
+    description='Microduck rayuela (hopscotch) game: MuJoCo sim + ONNX policies, ball vision and go-to-casilla control',
     license='Apache-2.0',
     extras_require={
         'test': [
@@ -27,8 +27,6 @@ setup(
     },
     entry_points={
         'console_scripts': [
-            'sim_microduck = rayuela.run_env:main',
-            'sim_node = rayuela.sim_node:main',
             'bridge_node = rayuela.bridge_node:main',
             'vision_node = rayuela.vision_node:main',
             'control_node = rayuela.control_node:main',
