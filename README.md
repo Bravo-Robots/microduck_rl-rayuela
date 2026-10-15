@@ -2,8 +2,11 @@
 
 This branch adds **Rayuela**, a hopscotch game for the
 [Microduck](https://github.com/pollen-robotics/microduck) robot, as a ROS 2
-Humble application on top of the RL policies from
+Humble application (Ubuntu 22.04) on top of the RL policies from
 [pollen-robotics/microduck_rl](https://github.com/pollen-robotics/microduck_rl).
+For Ubuntu 24.04 and ROS 2 Jazzy, use the [rayuela-ros2-jazzy](https://github.com/dasanplaen-cmyk/microduck_rl-rayuela/tree/rayuela-ros2-jazzy) branch instead.
+
+
 
 For everything that is not the game (training tasks, the BAM actuator model,
 backlash variants, project structure, publishing a policy), see the
@@ -170,7 +173,7 @@ Likewise, do not activate the venv in terminal B (VS Code may do it for you):
 ### 1. Clone
 
 ```bash
-git clone -b rayuela-ros2-humble https://github.com/dasanplaen-cmyk/microduck_rl-rayuela
+git clone -b rayuela-ros2-humble https://github.com/dasanplaen-cmyk/microduck_rl-rayuela ~/microduck_rl-rayuela 
 cd ~/microduck_rl-rayuela
 ```
 
@@ -261,7 +264,7 @@ cd ~/microduck_rl-rayuela
 uv run scripts/infer_policy.py --new-cmd-obs --walking policies-v1/alpha_walking.onnx \
     --standing policies-v1/alpha_standing.onnx --roulade policies-v1/roulade.onnx \
     --sitstand policies-v1/alpha_sitstand.onnx --ground-pick policies-v1/alpha_ground_pick.onnx \
-    --kick-right policies-v1/ball_kick_speed_right.onnx --kick-left policies-v1 \ ball_kick_speed_left.onnx \
+    --kick-right policies-v1/ball_kick_speed_right.onnx --kick-left policies-v1 ball_kick_speed_left.onnx \
     --kick-speed-commanded --kick-speed 0.3
 ```
 
