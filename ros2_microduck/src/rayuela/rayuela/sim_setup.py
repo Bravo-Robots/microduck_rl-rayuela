@@ -1,9 +1,9 @@
-"""How the simulated duck behaves: which policies are loaded and how,
-walking<->standing thresholds, durations, command handling and the cameras.
+"""How the simulated duck behaves: the BAM actuator model, which policies
+are loaded and how, walking<->standing thresholds, durations, command handling
+and the cameras.
 
-Used by sim_worker.py, which is only the process around it (control loop,
-socket, status line). Runs under the project venv (Python 3.12), so it may use
-mujoco/numpy/onnxruntime, never rclpy.
+Used by sim_node.py, which is only the ROS node around it (control timer,
+topics, status line). Kept free of rclpy so it can be driven headless.
 """
 
 import os
@@ -16,7 +16,9 @@ from rayuela import board_geometry, kick_command, paths
 
 if str(paths.SCRIPTS_DIR) not in sys.path:
     sys.path.append(str(paths.SCRIPTS_DIR))
-from infer_policy import PolicyInference  # noqa: E402
+from infer_policy import (  # noqa: E402
+    BAM_KP_FW, BAM_VIN_MIN, PolicyInference, load_bam_model, load_mujoco_with_bam,
+)
 
 CONTROL_DECIMATION = 4
 CONTROL_TIMESTEP = 0.005  # policies trained at 50Hz = decimation(4) * 0.005s
@@ -27,6 +29,12 @@ IMAGE_PUBLISH_EVERY_N_CONTROL_STEPS = 3  # ~50Hz / 3 ≈ 16Hz
 # flip to True to get the debug feed on
 # /rayuela/topdown_camera_groundtruth/image_raw again.
 PUBLISH_TOPDOWN_GROUNDTRUTH = False
+
+# BAM M6/XL330 defaults, matching infer_policy.py's CLI defaults (--kp-fw,
+# --vin, --vin-drop-gain, --current-limit).
+BAM_VIN = 7.4
+BAM_VIN_DROP_GAIN = 0.1
+BAM_CURRENT_LIMIT = 0.0  # <=0 -> None (no firmware current limit)
 
 # How long a trick policy stays in control before handing back to
 # standing/walking. KICK_DURATION_S must match the kick_duration that
@@ -54,6 +62,17 @@ VEL_MIN_Y = -0.2
 VEL_MAX_ANG = 1.5
 
 HOME_TRUNK_Z = 0.125
+
+
+def load_bam_sim(xml_path: str):
+    """(model, data, bam_ctrl): the scene with every servo driven by BAM
+    (bam.mujoco.MujocoController), the actuator model the policies were
+    trained against, stepped at CONTROL_TIMESTEP."""
+    bam_model = load_bam_model(BAM_KP_FW, BAM_VIN, BAM_CURRENT_LIMIT)
+    model, data, bam_ctrl, _names = load_mujoco_with_bam(
+        xml_path, bam_model, CONTROL_TIMESTEP, BAM_VIN_DROP_GAIN, BAM_VIN_MIN
+    )
+    return model, data, bam_ctrl
 
 
 def select_kick_policies(policies_dir: str) -> tuple[str, str, bool]:

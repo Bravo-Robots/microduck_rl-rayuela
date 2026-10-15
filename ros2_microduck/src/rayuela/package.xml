@@ -15,8 +15,9 @@
   <depend>launch</depend>
   <depend>launch_ros</depend>
 
-  <exec_depend>python3-numpy</exec_depend>
-  <exec_depend>python3-opencv</exec_depend>
+  <!-- numpy, opencv, mujoco, onnxruntime and bam come from the project venv
+       (uv sync), not from apt: apt's python3-opencv is built against NumPy 1
+       and cannot load next to the venv's NumPy 2. -->
 
   <test_depend>ament_copyright</test_depend>
   <test_depend>ament_flake8</test_depend>

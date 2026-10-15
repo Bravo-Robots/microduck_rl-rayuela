@@ -35,6 +35,10 @@ dependencies = [
     # floating `>=` lets the CUDA index (which carries newer builds than the
     # PyPI pin) drag torch 2.9.1 -> 2.13.0, an unvetted bump for mjlab/rsl_rl.
     "torch==2.9.1",
+    # rayuela's vision_node runs in this venv. apt's python3-opencv cannot
+    # replace it: it is built against NumPy 1 and fails to load next to the
+    # NumPy 2 this lock resolves.
+    "opencv-python>=5.0.0.93",
 ]
 
 [project.entry-points."mjlab.tasks"]
@@ -109,10 +113,10 @@ url = "https://download.pytorch.org/whl/cu129"
 explicit = true
 
 [tool.pytest.ini_options]
-# A terminal with ROS 2 Humble sourced puts /opt/ros/humble/... on PYTHONPATH,
-# and pytest then auto-loads ROS's own pytest plugins (Python 3.10, needing
-# `lark` and friends) into the venv's 3.12 pytest, which dies before collecting
-# a single test (`ModuleNotFoundError: No module named 'lark'`, 2026-10-05).
-# These are their entry-point names in Humble; no test here uses them, and
-# blocking a plugin that is not installed is a no-op.
+# A terminal with ROS 2 sourced puts /opt/ros/<distro>/... on PYTHONPATH, and
+# pytest then auto-loads ROS's own pytest plugins into the venv's pytest. Under
+# Humble (Python 3.10) that killed every run before collection
+# (`ModuleNotFoundError: No module named 'lark'`, 2026-10-05); under Jazzy they
+# load but drag launch_testing into tests that never use it. Blocking a plugin
+# that is not installed is a no-op.
 addopts = "-p no:launch_testing -p no:launch_pytest -p no:launch_ros -p no:ament_lint"

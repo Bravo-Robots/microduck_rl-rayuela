@@ -1,8 +1,4 @@
-"""Helpers shared by the rayuela rclpy nodes: message builders and ``main()``.
-
-rclpy-only, so sim_worker.py (project venv, no rclpy) cannot import it — it
-talks to bridge_node instead, which turns its frames into these messages.
-"""
+"""Helpers shared by the rayuela rclpy nodes: message builders and ``main()``."""
 
 import array
 import signal
@@ -53,9 +49,8 @@ def rgb8_image_msg(rgb_bytes: bytes, width: int, height: int, header) -> Image:
     # uint8[] field fast-paths an array.array with typecode 'B' straight into
     # the message; anything else falls into a __debug__ branch that validates
     # EVERY element in Python. For a 2.76MB frame that is 163ms per image vs
-    # 0.06ms — measured. At two images per publish it made the bridge the
-    # bottleneck for the whole pipeline: it blocked its own socket reader, the
-    # Unix socket backed up, and sim_worker stalled in sendall.
+    # 0.06ms — measured, and at ~16 Hz it alone would eat most of the 20 ms
+    # control step of the node publishing the frames.
     msg.data = array.array('B', rgb_bytes)
     return msg
 
@@ -79,7 +74,7 @@ def pose_msg(stamp, x: float, y: float, z: float,
 def spin_node(node_cls, args=None) -> None:
     """Init rclpy, spin one ``node_cls()`` until Ctrl+C, and shut down quietly.
 
-    On Ctrl+C, Humble's rclpy shuts the context down from its signal handler:
+    On Ctrl+C, rclpy shuts the context down from its own signal handler:
     spin() then raises ExternalShutdownException (not KeyboardInterrupt), a
     callback that was mid-flight can fail to publish ("publisher's context is
     invalid"), and a second rclpy.shutdown() raises "already called". None of

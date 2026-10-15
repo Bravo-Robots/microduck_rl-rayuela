@@ -1,9 +1,12 @@
-# Microduck RL + Rayuela (ROS 2 Humble)
+# Microduck RL + Rayuela (ROS 2 Jazzy)
 
 This branch adds **Rayuela**, a hopscotch game for the
 [Microduck](https://github.com/pollen-robotics/microduck) robot, as a ROS 2
-Humble application on top of the RL policies from
+Jazzy application (Ubuntu 24.04) on top of the RL policies from
 [pollen-robotics/microduck_rl](https://github.com/pollen-robotics/microduck_rl).
+For Ubuntu 22.04 and ROS 2 Humble, use the
+[`rayuela-ros2-humble`](https://github.com/dasanplaen-cmyk/microduck_rl-rayuela/tree/rayuela-ros2-humble)
+branch instead.
 
 For everything that is not the game (training tasks, the BAM actuator model,
 backlash variants, project structure, publishing a policy), see the
@@ -16,7 +19,7 @@ The reward-design rules and the workflow for creating new tasks are in
 - [Rayuela: a hopscotch game](#rayuela-a-hopscotch-game)
   - [Nodes](#nodes) · [Topics](#topics) · [Launch arguments](#launch-arguments) · [Policies](#policies) · [How it works](#how-it-works)
 - [Setup](#setup)
-  - [0. Requirements](#0-requirements) · [1. Clone](#1-clone) · [2. Project venv](#2-project-venv-terminal-a) · [3. ROS 2 Humble](#3-ros-2-humble-terminal-b) · [4. Build](#4-build-the-ros-2-workspace-terminal-b) · [5. Launch](#5-launch-the-game-terminal-b) · [6. Without ROS 2](#6-without-ros-2-terminal-a)
+  - [0. Requirements](#0-requirements) · [1. ROS 2 Jazzy](#1-ros-2-jazzy) · [2. Clone](#2-clone) · [3. Project venv](#3-project-venv) · [4. Build](#4-build-the-ros-2-workspace) · [5. Launch](#5-launch-the-game) · [6. Without ROS 2](#6-without-ros-2)
 - [Troubleshooting](#troubleshooting)
 
 ## Rayuela: a hopscotch game
@@ -33,7 +36,7 @@ and 10 is the *cielo* (the half-circle at the far end).
 
 | Node | What it does |
 |---|---|
-| `sim_worker.py` + `bridge_node` | The simulation: MuJoCo and the ONNX policies with the BAM actuators they were trained on, running in the project venv. `bridge_node` connects it to ROS (see [How it works](#how-it-works)) and publishes the camera, the duck pose and `current_policy`. |
+| `sim_node` | The simulation: MuJoCo and the ONNX policies with the BAM actuators they were trained on. Publishes the camera, the duck pose and `current_policy`. |
 | `vision_node` | Rectifies the angled camera to a metric top-down view, finds the ball and reports the casilla it stops on. |
 | `control_node` | Drives the duck to the reported casilla, and back to HOME on request. |
 | `teleop_keyboard` | Manual driving, tricks, and "kick to casilla N" (digits 1-9, 0 = cielo). |
@@ -43,12 +46,11 @@ Besides one file per node, it holds the shared modules:
 
 | Module | Contents | Imported by |
 |---|---|---|
-| `sim_setup.py` | Policy loading, walk/stand thresholds, command handling, cameras | `sim_worker` |
-| `ros_utils.py` | ROS message builders and the common `main()` | every rclpy node |
-| `board_geometry.py` | Board, camera and kick-calibration tables | everything (stdlib only) |
-| `kick_command.py` | The `behavior_cmd` kick grammar | `sim_setup`, `vision_node` (stdlib only) |
-| `rayuela_ipc.py` | Socket protocol between `sim_worker` and `bridge_node` | both (stdlib only) |
-| `paths.py` | Finds the checkout at runtime | everything (stdlib only) |
+| `sim_setup.py` | BAM actuator model, policy loading, walk/stand thresholds, command handling, cameras | `sim_node` |
+| `ros_utils.py` | ROS message builders and the common `main()` | every node |
+| `board_geometry.py` | Board, camera and kick-calibration tables | everything |
+| `kick_command.py` | The `behavior_cmd` kick grammar | `sim_setup`, `vision_node` |
+| `paths.py` | Finds the checkout at runtime | everything |
 
 The custom message `TargetCasilla` is in
 [`ros2_microduck/src/rayuela_msgs/`](ros2_microduck/src/rayuela_msgs/).
@@ -81,10 +83,9 @@ ros2 topic pub --once /rayuela/go_home std_msgs/msg/Bool "{data: true}"
 
 | Argument | Default | Effect |
 |---|---|---|
-| `use_viewer` | `false` | Opens the MuJoCo viewer. |
+| `use_viewer` | `false` | Opens the MuJoCo viewer. Closing its window ends the game. |
 | `enable_vision` | `true` | Runs `vision_node`. |
 | `enable_control` | `true` | Runs `control_node`. |
-| `venv_python` | `<repo>/.venv/bin/python3` | Interpreter that runs `sim_worker.py`. |
 | `vis_raw` | `false` | Debug window with the angled camera. |
 | `vis_rect` | `false` | Debug window with the rectified board and the detected ball. |
 | `vertical_view` | `false` | Rotates the rectified board view (and the published `/rayuela/topdown_camera/image_raw`) so the cielo is at the top. |
@@ -111,14 +112,15 @@ the original repo) and save it under the same file name.
 
 ### How it works
 
-**Two Python interpreters.** `rclpy` is only available for Humble's system
-Python 3.10, while mujoco, onnxruntime and bam live in the project's Python
-3.12 venv. So `sim_worker.py` runs the simulation in the venv, and
-`bridge_node` republishes its pose and camera frames as ROS topics and sends
-`cmd_vel` and `behavior_cmd` back over a Unix socket. The wire format is in
-`rayuela_ipc.py`. That file and `kick_command.py` (the command grammar above)
-use only the standard library, because both interpreters import them.
-`paths.py` finds the checkout at runtime, so no home directory is hardcoded.
+**One Python for everything.** Ubuntu 24.04's system Python is 3.12, which
+is both what ROS 2 Jazzy is built for and what bam requires. So every node runs
+in the project venv: it is created with `--system-site-packages` so it also
+sees rclpy and ROS's other Python dependencies, and the workspace is built with
+the venv's interpreter so the nodes find mujoco, onnxruntime, bam and OpenCV.
+OpenCV comes from the venv (`opencv-python`), not from apt: apt's
+`python3-opencv` is built against NumPy 1 and cannot load next to the venv's
+NumPy 2. `paths.py` finds the checkout at runtime, so no home directory is
+hardcoded.
 
 **Vision.** Four coloured fiducials give a one-off homography into a metric
 top-down canvas, where the ball is a blob of known size. The ball is picked
@@ -147,30 +149,26 @@ and is what makes all ten casillas reachable.
 
 ## Setup
 
-The project uses **two separate Python environments**, each in its own
-terminal:
-
-| Terminal | Environment | Python | Contains | Used for |
-|---|---|---|---|---|
-| A | Project venv (`.venv/`, managed by `uv`) | 3.12 | mjlab, MuJoCo Warp, torch, rsl_rl, onnxruntime, BAM | Training, ONNX export, simulation with BAM actuators |
-| B | ROS 2 Humble (system Python) | 3.10 | rclpy, messages, colcon, OpenCV | The rayuela nodes (vision, control, teleop, bridge) |
-
-**Keep them apart.** Do not source ROS in terminal A: ROS's `PYTHONPATH`
-(Python 3.10 packages) leaks into the 3.12 venv. If your `~/.bashrc` runs
-`source /opt/ros/humble/setup.bash`, start terminal A with `unset PYTHONPATH`.
-Likewise, do not activate the venv in terminal B (VS Code may do it for you):
-`colcon build` then picks up the wrong Python.
+There is a **single Python environment**: the project venv, built on the
+system Python 3.12 that ROS 2 Jazzy also uses. It runs training, the ONNX
+tools and every node of the game.
 
 ### 0. Requirements
 
-- Ubuntu 22.04 (the platform for ROS 2 Humble).
+- Ubuntu 24.04 (the platform for ROS 2 Jazzy), with its default Python 3.12.
 - An NVIDIA GPU, **only for training**. The game and `infer_policy.py` run on CPU.
 - About 10 GB of free disk space.
 
-### 1. Clone
+### 1. ROS 2 Jazzy
+
+Install ROS 2 Jazzy (`ros-jazzy-desktop` and `ros-dev-tools`, which brings
+colcon) by following the official guide:
+https://docs.ros.org/en/jazzy/Installation/Ubuntu-Install-Debs.html
+
+### 2. Clone
 
 ```bash
-git clone -b rayuela-ros2-humble https://github.com/dasanplaen-cmyk/microduck_rl-rayuela
+git clone -b rayuela-ros2-jazzy https://github.com/dasanplaen-cmyk/microduck_rl-rayuela ~/microduck_rl-rayuela
 cd ~/microduck_rl-rayuela
 ```
 
@@ -178,15 +176,20 @@ The nodes find the repo on their own as long as you build `ros2_microduck/`
 inside the clone (step 4). Otherwise, export
 `MICRODUCK_RL_ROOT=/path/to/microduck_rl-rayuela`.
 
-### 2. Project venv (terminal A)
+### 3. Project venv
 
 ```bash
-unset PYTHONPATH                                  # only if your ~/.bashrc sources ROS
 curl -LsSf https://astral.sh/uv/install.sh | sh   # install uv
 exec $SHELL                                       # reload PATH so `uv` is found
 cd ~/microduck_rl-rayuela
-uv sync                                           # creates .venv/ with Python 3.12
+uv venv --system-site-packages --python /usr/bin/python3.12
+uv sync
 ```
+
+Both flags of `uv venv` matter: `--python /usr/bin/python3.12` uses the same
+interpreter ROS 2 Jazzy was built for, and `--system-site-packages` lets the
+venv see rclpy and the rest of ROS. A plain `uv sync` without the `uv venv`
+line creates a venv that has neither, and the nodes will not start.
 
 On ARM machines (DGX Spark, Jetson), run `export UV_HTTP_TIMEOUT=600` first.
 
@@ -199,43 +202,42 @@ uv run train Mjlab-BallKickSpeed-Right-Flat-MicroDuck \
     --env.scene.num-envs 64 --agent.max_iterations 5     # smoke test, needs a GPU
 ```
 
-### 3. ROS 2 Humble (terminal B)
-
-Install Humble by following the official guide:
-https://docs.ros.org/en/humble/Installation/Ubuntu-Install-Debs.html
-
-Then install the extra packages the game needs:
+### 4. Build the ROS 2 workspace
 
 ```bash
-sudo apt install -y python3-colcon-common-extensions python3-numpy python3-opencv
-```
-
-### 4. Build the ROS 2 workspace (terminal B)
-
-```bash
-source /opt/ros/humble/setup.bash
+source /opt/ros/jazzy/setup.bash
+source ~/microduck_rl-rayuela/.venv/bin/activate
 cd ~/microduck_rl-rayuela/ros2_microduck
-colcon build --symlink-install && source install/setup.bash
+python -m colcon build --symlink-install && source install/setup.bash
 ros2 interface show rayuela_msgs/msg/TargetCasilla   # checks the custom message
 ```
 
-### 5. Launch the game (terminal B)
+Use `python -m colcon`, not plain `colcon`: it runs colcon with the venv's
+Python, so the installed nodes start with that Python too. Plain `colcon`
+uses `/usr/bin/python3`, which has no mujoco, bam or OpenCV.
+
+Every new terminal that uses the game needs the same three lines. You can add
+them to your `~/.bashrc`:
+
+```bash
+source /opt/ros/jazzy/setup.bash
+source ~/microduck_rl-rayuela/.venv/bin/activate
+source ~/microduck_rl-rayuela/ros2_microduck/install/setup.bash
+```
+
+### 5. Launch the game
 
 ```bash
 ros2 launch rayuela rayuela.launch.py use_viewer:=true
 ```
 
-The simulation runs with the venv's Python (`.venv/bin/python3`), so step 2
-must be done first. If your venv is somewhere else, add
-`venv_python:=/path/to/python3`. To see what the vision node detects, add
-`vis_rect:=true` (rectified board with the ball), `vis_raw:=true` (angled
-camera) and `vertical_view:=true` (board shown vertically, cielo at the top).
+To see what the vision node detects, add `vis_rect:=true` (rectified board
+with the ball), `vis_raw:=true` (angled camera) and `vertical_view:=true`
+(board shown vertically, cielo at the top).
 
-Run the keyboard teleop in a third terminal with ROS sourced:
+Run the keyboard teleop in a second terminal (with the three lines above):
 
 ```bash
-source /opt/ros/humble/setup.bash
-source ~/microduck_rl-rayuela/ros2_microduck/install/setup.bash
 ros2 run rayuela teleop_keyboard
 ```
 
@@ -252,7 +254,7 @@ ros2 run rayuela teleop_keyboard
 | `x` | Stop everything (behaviour, target, go-home) |
 | `q` | Quit |
 
-### 6. Without ROS 2 (terminal A)
+### 6. Without ROS 2
 
 A simpler simulation to try the trained policies, with no ROS involved:
 
@@ -261,7 +263,7 @@ cd ~/microduck_rl-rayuela
 uv run scripts/infer_policy.py --new-cmd-obs --walking policies-v1/alpha_walking.onnx \
     --standing policies-v1/alpha_standing.onnx --roulade policies-v1/roulade.onnx \
     --sitstand policies-v1/alpha_sitstand.onnx --ground-pick policies-v1/alpha_ground_pick.onnx \
-    --kick-right policies-v1/ball_kick_speed_right.onnx --kick-left policies-v1 \ ball_kick_speed_left.onnx \
+    --kick-right policies-v1/ball_kick_speed_right.onnx --kick-left policies-v1/ball_kick_speed_left.onnx \
     --kick-speed-commanded --kick-speed 0.3
 ```
 
@@ -269,13 +271,11 @@ uv run scripts/infer_policy.py --new-cmd-obs --walking policies-v1/alpha_walking
 
 | Symptom | Cause | Fix |
 |---|---|---|
-| `ModuleNotFoundError: rclpy` inside `uv run` | Expected: rclpy is not in the venv | Run ROS commands in terminal B |
-| Odd import errors in `uv run` | ROS is sourced in that terminal | `unset PYTHONPATH`, or open a terminal without `source /opt/ros/...` |
-| `ModuleNotFoundError: No module named 'em'` during `colcon build` | The project venv is active in terminal B, so CMake uses its Python | `deactivate`, or open a fresh terminal |
-| `No module named 'lark'` when pytest starts | With ROS sourced, pytest loads ROS's pytest plugins (Python 3.10) | `pyproject.toml` already blocks them; if another plugin shows up, `unset PYTHONPATH` |
-| `A module that was compiled using NumPy 1.x cannot be run in NumPy 2.x` in a ROS node | A NumPy 2 in `~/.local` (from some earlier `pip install --user`) shadows apt's NumPy 1, which `python3-opencv` was built against | In terminal B: `python3 -m pip install --user opencv-python` |
+| `No module named 'mujoco'` (or `'cv2'`, `'bam'`) when a node starts | The workspace was built with plain `colcon`, so the nodes run with `/usr/bin/python3` | Rebuild from step 4: `rm -rf build install log`, then `python -m colcon build --symlink-install` with the venv active |
+| `A module that was compiled using NumPy 1.x cannot be run in NumPy 2.x` | A node loaded apt's `python3-opencv`: same cause as the row above | Same fix as the row above |
+| `No module named 'rclpy'` (or `'yaml'`) in the venv | The venv was created without `--system-site-packages`, or ROS is not sourced | `source /opt/ros/jazzy/setup.bash`; if it persists, recreate the venv: `rm -rf .venv`, then step 3 |
+| `No module named colcon` | `ros-dev-tools` is missing, or the venv cannot see system packages | `sudo apt install ros-dev-tools`; check the venv as in the row above |
 | `IndexError` in `select_gpus()` when training on ARM | Torch without CUDA | See the aarch64 section of [AGENTS.md](AGENTS.md) |
-| `sim_worker.py` does not start | `<repo>/.venv` does not exist | Run `uv sync` (step 2) or pass `venv_python:=...` |
 | `Cannot find the microduck_rl checkout` | The ROS 2 workspace was built outside the clone | Build inside `ros2_microduck/` as in step 4, or `export MICRODUCK_RL_ROOT=/path/to/microduck_rl-rayuela` |
 | The duck does not move in ROS | ONNX files missing from `policies-v1/` | Restore them from the repo (`git checkout -- policies-v1/`) or export your own ([Policies](#policies)) |
 

@@ -323,7 +323,7 @@ class RayuelaControlNode(Node):
         # streaming zeros here at 20Hz overwrote every key on the next tick, so
         # manual driving flapped walking->standing and never moved. Silence is
         # safe: PolicyInference holds the last command it got, which at startup
-        # is sim_worker's explicit zero, and every path into idle goes through
+        # is sim_node's explicit zero, and every path into idle goes through
         # an arrival branch that already sends its own final stop.
 
     def _heading_pd(self, heading_error: float) -> float:

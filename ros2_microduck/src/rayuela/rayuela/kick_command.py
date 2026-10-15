@@ -1,5 +1,5 @@
-"""Kick commands on /rayuela/behavior_cmd, shared by sim_setup (sim_worker) and
-vision_node (stdlib only — imported from both the venv and ROS's Python).
+"""Kick commands on /rayuela/behavior_cmd, shared by sim_setup (sim_node) and
+vision_node. Stdlib only, so it can be tested without ROS or MuJoCo.
 
 Grammar:
     kick_right / kick_left      fixed-speed kick (the original policies)

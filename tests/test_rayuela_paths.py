@@ -33,8 +33,7 @@ def test_resolves_the_checkout_from_the_source_tree():
     assert p.ROOT == REPO
     assert p.SCENE_XML.is_file()
     assert (p.SCRIPTS_DIR / "infer_policy.py").is_file()
-    assert p.SIM_WORKER_SCRIPT.is_file()
-    assert p.VENV_PYTHON == REPO / ".venv" / "bin" / "python3"
+    assert (p.POLICIES_DIR / "alpha_walking.onnx").is_file()
 
 
 def test_does_not_need_the_policies_dir(tmp_path):

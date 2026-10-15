@@ -27,7 +27,7 @@ setup(
     },
     entry_points={
         'console_scripts': [
-            'bridge_node = rayuela.bridge_node:main',
+            'sim_node = rayuela.sim_node:main',
             'vision_node = rayuela.vision_node:main',
             'control_node = rayuela.control_node:main',
             'teleop_keyboard = rayuela.teleop_keyboard:main',

@@ -6,9 +6,8 @@ into the source tree) until a directory holding both pyproject.toml and
 src/mjlab_microduck/ is found. (Not policies-v1/: the root must resolve even
 if the ONNX files have been moved or deleted.)
 
-Stdlib only: imported both by the ROS 2 nodes (system Python 3.10) and by
-sim_worker.py (the project venv, Python 3.12). The constants are Path objects;
-wrap them in str() where an API wants a string (ROS parameters, launch args).
+Stdlib only, so the tests can load it without ROS. The constants are Path
+objects; wrap them in str() where an API wants a string (ROS parameters).
 """
 
 import os
@@ -39,8 +38,6 @@ def repo_root() -> Path:
 
 
 ROOT = repo_root()
-VENV_PYTHON = ROOT / ".venv" / "bin" / "python3"
 SCRIPTS_DIR = ROOT / "scripts"
 POLICIES_DIR = ROOT / "policies-v1"
 SCENE_XML = ROOT / "src" / "mjlab_microduck" / "robot" / "microduck" / "escena_rayuela.xml"
-SIM_WORKER_SCRIPT = ROOT / "ros2_microduck" / "src" / "rayuela" / "rayuela" / "sim_worker.py"
