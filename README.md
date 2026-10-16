@@ -32,6 +32,8 @@ lives in [`ros2_microduck/`](ros2_microduck/) and doubles as the end-to-end
 integration test for the whole policy family. Casillas are numbered 1 to 9,
 and 10 is the *cielo* (the half-circle at the far end).
 
+https://github.com/user-attachments/assets/3912fb5d-77c5-415f-b958-27979f76b475
+
 ### Nodes
 
 | Node | What it does |
