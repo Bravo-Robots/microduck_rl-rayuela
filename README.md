@@ -24,13 +24,16 @@ The reward-design rules and the workflow for creating new tasks are in
 
 ## Rayuela: a hopscotch game
 
-<!-- VIDEO: one run. Kick, ball lands on a square, duck walks/rolls to it. -->
-
 The duck kicks a ball onto a hopscotch board, a camera works out which square
 (*casilla*) it landed on, and the duck walks, or rolls, to that square. The game
 lives in [`ros2_microduck/`](ros2_microduck/) and doubles as the end-to-end
 integration test for the whole policy family. Casillas are numbered 1 to 9,
 and 10 is the *cielo* (the half-circle at the far end).
+
+<!-- VIDEO: one run. Kick, ball lands on a square, duck walks/rolls to it. -->
+<video width="1080" height="680" controls>
+  <source src="media/Microduck_rayuela.mp4" type="video/mp4">
+</video>
 
 ### Nodes
 
