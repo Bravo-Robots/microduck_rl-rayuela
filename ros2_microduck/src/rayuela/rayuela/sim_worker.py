@@ -14,6 +14,7 @@ Started by rayuela.launch.py; to run it by hand, with the venv interpreter:
 
 import argparse
 import os
+import queue
 import signal
 import socket
 import sys
@@ -43,6 +44,8 @@ POLICIES_DIR = str(paths.POLICIES_DIR)
 BAM_VIN = 7.4
 BAM_VIN_DROP_GAIN = 0.1
 BAM_CURRENT_LIMIT = 0.0  # <=0 -> None (no firmware current limit)
+
+MSG_BRIDGE_LOST = -1  # local to the command queue, never on the wire
 
 
 class SimWorker:
@@ -81,28 +84,55 @@ class SimWorker:
         self.sock: socket.socket | None = None
         self._sock_lock = threading.Lock()
         self._vel_gate = sim_setup.VelCommandGate(self.policy)
+        # Commands wait here for the control loop: the policy must not change
+        # under infer()/apply_action(), so the socket thread never touches it.
+        self._commands: queue.SimpleQueue = queue.SimpleQueue()
 
     def connect(self) -> None:
+        sock = self._open_socket()
+        threading.Thread(target=self._recv_loop, args=(sock,), daemon=True).start()
+
+    def _open_socket(self) -> socket.socket:
         while True:
             sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
             try:
                 sock.connect(ipc.SOCKET_PATH)
-                self.sock = sock
+                with self._sock_lock:
+                    self.sock = sock
                 print(f"Connected to bridge at {ipc.SOCKET_PATH}")
-                threading.Thread(target=self._recv_loop, daemon=True).start()
-                return
+                return sock
             except OSError as e:
+                sock.close()
                 print(f"Waiting for bridge ({ipc.SOCKET_PATH}): {e}")
                 time.sleep(1.0)
 
-    def _recv_loop(self) -> None:
+    def _recv_loop(self, sock: socket.socket) -> None:
         while True:
-            frame = ipc.read_frame(self.sock)
+            try:
+                frame = ipc.read_frame(sock)
+            except OSError:
+                frame = None
             if frame is None:
-                print("Bridge disconnected")
+                print("Bridge disconnected — reconnecting")
+                with self._sock_lock:
+                    self.sock = None
+                sock.close()
+                # control_node only publishes on change, so a stop sent while
+                # the bridge was down is lost: don't keep walking on the old one.
+                self._commands.put((MSG_BRIDGE_LOST, b""))
+                sock = self._open_socket()
+                continue
+            self._commands.put(frame)
+
+    def _drain_commands(self) -> None:
+        while True:
+            try:
+                msg_type, body = self._commands.get_nowait()
+            except queue.Empty:
                 return
-            msg_type, body = frame
-            if msg_type == ipc.MSG_CMD_VEL:
+            if msg_type == MSG_BRIDGE_LOST:
+                self._vel_gate.reset()
+            elif msg_type == ipc.MSG_CMD_VEL:
                 self._vel_gate.apply(*ipc.unpack_cmd_vel(body))
             elif msg_type == ipc.MSG_BEHAVIOR:
                 self._on_behavior(ipc.unpack_behavior(body))
@@ -112,10 +142,18 @@ class SimWorker:
 
     def _send(self, msg_type: int, body: bytes) -> None:
         with self._sock_lock:
+            if self.sock is None:
+                return  # bridge down, _recv_loop is reconnecting
             try:
                 ipc.send_frame(self.sock, msg_type, body)
             except OSError as e:
                 print(f"Send failed: {e}")
+                # Wakes _recv_loop, which owns closing and reconnecting.
+                try:
+                    self.sock.shutdown(socket.SHUT_RDWR)
+                except OSError:
+                    pass
+                self.sock = None
 
     def run(self) -> None:
         print("sim_worker running — Ctrl+C to stop")
@@ -123,6 +161,7 @@ class SimWorker:
             while True:
                 step_start = time.time()
 
+                self._drain_commands()
                 sim_setup.step_behavior_timers(self.policy, self.control_dt)
 
                 action = self.policy.infer()

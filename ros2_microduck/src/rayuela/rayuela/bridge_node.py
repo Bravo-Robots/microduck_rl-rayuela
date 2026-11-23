@@ -18,7 +18,7 @@ import threading
 import rclpy
 from geometry_msgs.msg import PoseStamped, Twist
 from rclpy.node import Node
-from rclpy.qos import QoSDurabilityPolicy, QoSProfile
+from rclpy.qos import QoSDurabilityPolicy, QoSProfile, qos_profile_sensor_data
 from sensor_msgs.msg import CameraInfo, Image
 from std_msgs.msg import Header, String
 
@@ -34,12 +34,12 @@ class RayuelaBridgeNode(Node):
         self._warned_no_client = False
 
         latched_qos = QoSProfile(depth=1, durability=QoSDurabilityPolicy.TRANSIENT_LOCAL)
-        self.image_pub = self.create_publisher(Image, "/rayuela/angled_camera/image_raw", 10)
+        self.image_pub = self.create_publisher(Image, "/rayuela/angled_camera/image_raw", qos_profile_sensor_data)
         self.camera_info_pub = self.create_publisher(
             CameraInfo, "/rayuela/angled_camera/camera_info", latched_qos
         )
         self.topdown_debug_pub = self.create_publisher(
-            Image, "/rayuela/topdown_camera_groundtruth/image_raw", 10
+            Image, "/rayuela/topdown_camera_groundtruth/image_raw", qos_profile_sensor_data
         )
         self.pose_pub = self.create_publisher(PoseStamped, "/rayuela/duck_pose", 10)
         self.policy_state_pub = self.create_publisher(String, "/rayuela/current_policy", 10)
@@ -49,6 +49,7 @@ class RayuelaBridgeNode(Node):
         self.create_subscription(String, "/rayuela/behavior_cmd", self._on_behavior_cmd, 10)
 
         self._stop = threading.Event()
+        self._server = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
         self._accept_thread = threading.Thread(target=self._accept_loop, daemon=True)
         self._accept_thread.start()
 
@@ -59,26 +60,31 @@ class RayuelaBridgeNode(Node):
             os.unlink(ipc.SOCKET_PATH)
         except FileNotFoundError:
             pass
-        server = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+        server = self._server
         server.bind(ipc.SOCKET_PATH)
         server.listen(1)
         while not self._stop.is_set():
-            conn, _ = server.accept()
+            try:
+                conn, _ = server.accept()
+            except OSError:
+                return  # destroy_node() closed the listening socket
             self.get_logger().info("sim_worker connected")
             with self._client_lock:
                 self._client_sock = conn
                 self._warned_no_client = False
             try:
                 self._read_loop(conn)
-            except Exception:
+            except Exception as e:
                 # Shutting down: the socket was closed or the ROS context
-                # went away under the reader. Anything else is a real error.
+                # went away under the reader. Anything else drops this client.
                 if self._stop.is_set() or not rclpy.ok():
                     return
-                raise
-            with self._client_lock:
-                if self._client_sock is conn:
-                    self._client_sock = None
+                self.get_logger().error(f"Bad data from sim_worker: {e!r}")
+            finally:
+                with self._client_lock:
+                    if self._client_sock is conn:
+                        self._client_sock = None
+                conn.close()
             self.get_logger().warn("sim_worker disconnected — waiting for reconnect")
 
     def _read_loop(self, conn: socket.socket) -> None:
@@ -133,7 +139,17 @@ class RayuelaBridgeNode(Node):
         self._stop.set()
         with self._client_lock:
             if self._client_sock is not None:
-                self._client_sock.close()
+                self._client_sock.shutdown(socket.SHUT_RDWR)
+        # shutdown() wakes the accept(); close() alone would leave it blocked.
+        try:
+            self._server.shutdown(socket.SHUT_RDWR)
+        except OSError:
+            pass
+        self._server.close()
+        try:
+            os.unlink(ipc.SOCKET_PATH)
+        except FileNotFoundError:
+            pass
         return super().destroy_node()
 
 

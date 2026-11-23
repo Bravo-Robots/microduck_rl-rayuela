@@ -12,12 +12,14 @@ SETTLE_WINDOW_S), so a hard kick and a soft one each report on arrival.
 """
 
 import math
+import os
 from collections import deque
 
 import cv2
 import numpy as np
 from geometry_msgs.msg import Point, PointStamped
 from rclpy.node import Node
+from rclpy.qos import qos_profile_sensor_data
 from sensor_msgs.msg import Image
 from std_msgs.msg import Header, String
 
@@ -105,10 +107,9 @@ BALL_WARN_GRACE_S = 2.0
 
 # How the rectified canvas is SHOWN and PUBLISHED: "horizontal" as built, or
 # "vertical" rotated 90 deg counter-clockwise (duck at the bottom, cielo at the
-# top). Purely a view — detection and every canvas<->world conversion run on
-# the unrotated canvas, so this cannot move a landing point. This is the
-# default; the `vertical_view` parameter (launch arg) overrides it.
-TOPDOWN_ORIENTATION = "horizontal"
+# top), chosen by the `vertical_view` parameter (launch arg). Purely a view —
+# detection and every canvas<->world conversion run on the unrotated canvas, so
+# this cannot move a landing point.
 
 
 class RayuelaVisionNode(Node):
@@ -117,7 +118,7 @@ class RayuelaVisionNode(Node):
 
         self.declare_parameter("vis_rect", False)
         self.declare_parameter("vis_raw", False)
-        self.declare_parameter("vertical_view", TOPDOWN_ORIENTATION == "vertical")
+        self.declare_parameter("vertical_view", False)
 
         self._homography = None  # angled-pixel -> canvas-pixel, set once calibrated
         self._canvas_size = board_geometry.topdown_canvas_size()
@@ -130,14 +131,20 @@ class RayuelaVisionNode(Node):
 
         self.ball_pub = self.create_publisher(PointStamped, "/rayuela/ball/position", 10)
         self.target_pub = self.create_publisher(TargetCasilla, "/rayuela/target_casilla", 10)
-        self.topdown_pub = self.create_publisher(Image, "/rayuela/topdown_camera/image_raw", 10)
+        self.topdown_pub = self.create_publisher(Image, "/rayuela/topdown_camera/image_raw", qos_profile_sensor_data)
 
         self.create_subscription(String, "/rayuela/behavior_cmd", self._on_behavior_cmd, 10)
-        self.create_subscription(Image, "/rayuela/angled_camera/image_raw", self._on_image, 10)
+        self.create_subscription(Image, "/rayuela/angled_camera/image_raw", self._on_image, qos_profile_sensor_data)
 
         self.vis_rectify_img = self.get_parameter("vis_rect").value
         self.vis_raw_img = self.get_parameter("vis_raw").value
         self.vertical_view = self.get_parameter("vertical_view").value
+
+        # Without a display Qt abort()s inside imshow, past any except clause.
+        if (self.vis_rectify_img or self.vis_raw_img) and not (
+                os.environ.get("DISPLAY") or os.environ.get("WAYLAND_DISPLAY")):
+            self.get_logger().warn("No display available — vis_rect/vis_raw disabled")
+            self.vis_rectify_img = self.vis_raw_img = False
 
         self.get_logger().info(
             f"Top-down view: {'vertical' if self.vertical_view else 'horizontal'}")
@@ -280,7 +287,7 @@ class RayuelaVisionNode(Node):
         return None
 
     def _oriented(self, img: np.ndarray) -> np.ndarray:
-        """The canvas as it should be SHOWN (see TOPDOWN_ORIENTATION)."""
+        """The canvas as it should be SHOWN (see the `vertical_view` parameter)."""
         if not self.vertical_view:
             return img
         return cv2.rotate(img, cv2.ROTATE_90_COUNTERCLOCKWISE)

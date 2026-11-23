@@ -191,6 +191,11 @@ class VelCommandGate:
         self._policy = policy
         self._last_key = None
 
+    def reset(self) -> None:
+        """Stop, and let the next command through even if it repeats the last."""
+        self.apply(0.0, 0.0, 0.0)
+        self._last_key = None
+
     def apply(self, vx: float, vy: float, wz: float) -> None:
         key = (vx, vy, wz, self._policy.current_policy)
         if key == self._last_key:

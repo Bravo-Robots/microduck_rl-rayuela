@@ -26,6 +26,9 @@ CAM_ANGLED = 0
 CAM_TOPDOWN_DEBUG = 1
 
 _CMD_VEL_FMT = "<3f"  # vx, vy, wz
+# stamp_sec is a double: time.time() does not fit in a float32.
+_POSE_FMT = "<d7f"  # stamp_sec, x, y, z, qx, qy, qz, qw
+_IMAGE_HEADER_FMT = "<BdHH"  # cam_id, stamp_sec, width, height
 
 
 def send_frame(sock: socket.socket, msg_type: int, body: bytes) -> None:
@@ -57,11 +60,11 @@ def read_frame(sock: socket.socket) -> tuple[int, bytes] | None:
 
 def pack_pose(stamp_sec: float, x: float, y: float, z: float,
               qx: float, qy: float, qz: float, qw: float) -> bytes:
-    return struct.pack("<8f", stamp_sec, x, y, z, qx, qy, qz, qw)
+    return struct.pack(_POSE_FMT, stamp_sec, x, y, z, qx, qy, qz, qw)
 
 
 def unpack_pose(body: bytes) -> tuple[float, float, float, float, float, float, float, float]:
-    return struct.unpack("<8f", body)
+    return struct.unpack(_POSE_FMT, body)
 
 
 def pack_cmd_vel(vx: float, vy: float, wz: float) -> bytes:
@@ -88,11 +91,11 @@ unpack_policy_state = unpack_string
 
 
 def pack_image(cam_id: int, stamp_sec: float, width: int, height: int, rgb_bytes: bytes) -> bytes:
-    header = struct.pack("<Bf HH", cam_id, stamp_sec, width, height)
+    header = struct.pack(_IMAGE_HEADER_FMT, cam_id, stamp_sec, width, height)
     return header + rgb_bytes
 
 
 def unpack_image(body: bytes) -> tuple[int, float, int, int, bytes]:
-    header_size = struct.calcsize("<Bf HH")
-    cam_id, stamp_sec, width, height = struct.unpack("<Bf HH", body[:header_size])
+    header_size = struct.calcsize(_IMAGE_HEADER_FMT)
+    cam_id, stamp_sec, width, height = struct.unpack(_IMAGE_HEADER_FMT, body[:header_size])
     return cam_id, stamp_sec, width, height, body[header_size:]

@@ -1,8 +1,9 @@
 from launch import LaunchDescription
-from launch.actions import DeclareLaunchArgument, ExecuteProcess
+from launch.actions import DeclareLaunchArgument, ExecuteProcess, Shutdown
 from launch.conditions import IfCondition
 from launch.substitutions import LaunchConfiguration
 from launch_ros.actions import Node
+from launch_ros.parameter_descriptions import ParameterValue
 
 from rayuela import paths
 
@@ -58,6 +59,28 @@ def generate_launch_description():
         ExecuteProcess(
             cmd=[venv_python, SIM_WORKER_SCRIPT, "--use-viewer", use_viewer],
             output="screen",
+            # ROS's PYTHONPATH holds Python 3.10 packages; keep them out of the
+            # venv's 3.12. Unbuffered so prints reach the launch log live.
+            additional_env={"PYTHONPATH": "", "PYTHONUNBUFFERED": "1"},
+            # Without the simulation the rest of the stack has nothing to do.
+            on_exit=Shutdown(),
+        ),
+
+        # world -> angled_cam, the MuJoCo angled_cam pose in the ROS optical
+        # convention (z forward, y down). Recompute if the camera moves in
+        # tablero_rayuela.xml. Fixed as the camera is; canvas frames
+        # (topdown_canvas, topdown_debug) are image spaces with no TF.
+        Node(
+            package="tf2_ros",
+            executable="static_transform_publisher",
+            name="rayuela_camera_tf",
+            output="screen",
+            arguments=[
+                "--x", "-0.15", "--y", "-0.9", "--z", "1.5",
+                "--qx", "0.87449876", "--qy", "-0.34768202",
+                "--qz", "0.12494252", "--qw", "-0.31425864",
+                "--frame-id", "world", "--child-frame-id", "angled_cam",
+            ],
         ),
 
         Node(
@@ -65,7 +88,11 @@ def generate_launch_description():
             executable="vision_node",
             name="rayuela_vision_node",
             output="screen",
-            parameters=[{"vis_rect": vis_rect, "vis_raw": vis_raw, "vertical_view": vertical_view}],
+            parameters=[{
+                "vis_rect": ParameterValue(vis_rect, value_type=bool),
+                "vis_raw": ParameterValue(vis_raw, value_type=bool),
+                "vertical_view": ParameterValue(vertical_view, value_type=bool),
+            }],
             condition=IfCondition(enable_vision),
         ),
         Node(

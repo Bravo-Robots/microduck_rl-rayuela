@@ -13,11 +13,19 @@
     <asset>
         <texture type="skybox" builtin="gradient" rgb1="0.3 0.5 0.7" rgb2="0 0 0"
                  width="512" height="3072"/>
+        <!-- MuJoCo's classic blue tiled floor. Kept matte (low reflectance) so
+             it does not tint the board, and its blue (hue ~105) is far from
+             both the ball's orange and the fiducial colours vision_node keys on. -->
+        <texture name="floor_tiles" type="2d" builtin="checker" mark="edge"
+                 rgb1="0.2 0.3 0.4" rgb2="0.1 0.2 0.3" markrgb="0.8 0.8 0.8"
+                 width="300" height="300"/>
+        <material name="floor_tiles" texture="floor_tiles" texuniform="true"
+                  texrepeat="5 5" reflectance="0.1"/>
     </asset>
 
     <worldbody>
         <light pos="0.9 0 3.0" dir="0 0 -1" directional="true"/>
-        <geom name="floor" type="plane" size="0 0 0.05" rgba="0.45 0.47 0.5 1"/>
+        <geom name="floor" type="plane" size="0 0 0.05" material="floor_tiles"/>
         
     </worldbody>
          <!-- <contact>
